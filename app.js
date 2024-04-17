@@ -103,7 +103,7 @@ document.addEventListener("DOMContentLoaded", function () {
       case 10: // Good Service
         return "#00AA00"; // Green
       case 9: // Minor Delays
-        return "#FFA500"; // Orange
+        return "#E1A700"; // Orangeish
       case 8: // Severe Delays
         return "#FF0000"; // Red
       default:
