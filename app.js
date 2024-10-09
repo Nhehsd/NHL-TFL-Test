@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const tubeApiUrl = `https://api.tfl.gov.uk/line/mode/tube/status`;
   const elizabethLineApiUrl = 'https://api.tfl.gov.uk/line/elizabeth/status';
-  const nationalRailApiUrl = 'https://api.tfl.gov.uk/line/mode/overground/status';
+  const nationalRailApiUrl = 'https://api.tfl.gov.uk/line/mode/overground/status'; //not national rail data but overground, const name has not be updated to reflect :)
 
   const fetchTubeData = fetch(tubeApiUrl).then((response) => response.json());
   const fetchElizabethLineData = fetch(elizabethLineApiUrl).then((response) => response.json());
