@@ -72,8 +72,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>`;
     });
 
-    const londonOvergroundLine = nationalRailData.filter((line) => line.name === "London Overground")
-      .map((line) => {
+    const londonOvergroundLine = nationalRailData.map((line) => {
         const lineColor = lineColors[line.name] || "#000000";
         const statusSeverity = line.lineStatuses[0].statusSeverity;
         const statusColor = getStatusColor(statusSeverity);
