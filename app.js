@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", function () {
       Victoria: "#0099CC",
       "Waterloo & City": "#7EC8E3",
       "Hammersmith & City": "#F68C95",
-      "London Overground": "#EE7C0E",
+      "Liberty": "#EE7C0E",
       "Elizabeth line": "#9E579D"
     };
 
