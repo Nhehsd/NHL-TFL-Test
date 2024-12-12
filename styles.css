@@ -71,9 +71,14 @@ body {
   border-radius: 5px; /* Optional: Add rounded corners */
 }
 
-/* Ensures the main content is scaled to fit */
+/* Center content both vertically and horizontally */
 body {
-    transform: scale(0.8); /* Adjust the scale as needed */
-    transform-origin: top left; /* Ensures scaling starts from the top left */
-    overflow-x: hidden; /* Prevents horizontal scrolling */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Full viewport height */
+    margin: 0; /* Remove default margin */
+    transform: scale(0.5); /* Adjust scale as needed */
+    transform-origin: center; /* Scaling from center */
+    overflow: hidden; /* Prevent scrolling */
 }
