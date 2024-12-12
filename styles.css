@@ -70,3 +70,10 @@ body {
   padding: 10px; /* Match the padding of line container */
   border-radius: 5px; /* Optional: Add rounded corners */
 }
+
+/* Ensures the main content is scaled to fit */
+body {
+    transform: scale(0.8); /* Adjust the scale as needed */
+    transform-origin: top left; /* Ensures scaling starts from the top left */
+    overflow-x: hidden; /* Prevents horizontal scrolling */
+}
