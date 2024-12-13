@@ -5,10 +5,10 @@ html, body {
 
 h1 {
   color: #002269;
-  background: rgba(255, 255, 255, 0.7); /* Adjust the transparency as needed */
-  display: inline; /* Make the background only as wide as the text */
-  padding: 0.2em 0.5em; /* Add padding to create space around the text */
-  border-radius: 5px; /* Optional: Add rounded corners */
+  background: rgba(255, 255, 255, 0.7); 
+  display: inline; 
+  padding: 0.2em 0.5em; 
+  border-radius: 5px; 
   margin-left: 69px; 
   font-family: 'Proxima Nova', sans-serif;
   font-weight: bold;
@@ -66,19 +66,55 @@ body {
   font-size: 14px;
   color: inherit;
    font-weight: bold;
-   background-color: #f0f0f0; /* Match the background color of line container */
-  padding: 10px; /* Match the padding of line container */
-  border-radius: 5px; /* Optional: Add rounded corners */
+   background-color: #f0f0f0; 
+  padding: 10px; 
+  border-radius: 5px; 
 }
 
-/* Center content both vertically and horizontally */
+
 body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh; /* Full viewport height */
-    margin: 0; /* Remove default margin */
-    transform: scale(0.75); /* Adjust scale as needed */
+    height: 100vh; 
+    margin: 0; 
+    transform: scale(0.95); 
     transform-origin: center; /* Scaling from center */
     overflow: hidden; /* Prevent scrolling */
+}
+
+
+.tables-container {
+  display: flex;
+  justify-content: space-between; 
+  align-items: flex-start; 
+  height: auto; 
+}
+
+.table-left {
+  width: 48%; 
+  background-color: rgba(255, 255, 255, 0.8); 
+  padding: 20px;
+  border-radius: 10px; 
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+  margin: 10px; 
+}
+
+.table-right {
+  width: 48%; 
+  background-color: rgba(255, 255, 255, 0.8); 
+  padding: 20px; 
+  border-radius: 10px; 
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: center; 
+  align-items: center; 
+  margin: 10px; 
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  background-color: transparent;
 }
