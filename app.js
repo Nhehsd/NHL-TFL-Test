@@ -1,19 +1,17 @@
 document.addEventListener("DOMContentLoaded", function () {
-  const statusContainer = document.getElementById("status-container");
-
   const tubeApiUrl = `https://api.tfl.gov.uk/line/mode/tube/status`;
   const elizabethLineApiUrl = 'https://api.tfl.gov.uk/line/elizabeth/status';
-  const nationalRailApiUrl = 'https://api.tfl.gov.uk/line/mode/overground/status'; //not national rail data but overground, const name has not be updated to reflect :)
+  const overgroundApiUrl = 'https://api.tfl.gov.uk/line/mode/overground/status';
 
   const fetchTubeData = fetch(tubeApiUrl).then((response) => response.json());
   const fetchElizabethLineData = fetch(elizabethLineApiUrl).then((response) => response.json());
-  const fetchNationalRailData = fetch(nationalRailApiUrl).then((response) => response.json());
+  const fetchOvergroundData = fetch(overgroundApiUrl).then((response) => response.json());
 
-  Promise.all([fetchTubeData, fetchElizabethLineData, fetchNationalRailData])
-    .then(([tubeData, elizabethLineData, nationalRailData]) => displayTubeStatus(tubeData, elizabethLineData, nationalRailData))
+  Promise.all([fetchTubeData, fetchElizabethLineData, fetchOvergroundData])
+    .then(([tubeData, elizabethLineData, overgroundData]) => displayTubeStatus(tubeData, elizabethLineData, overgroundData))
     .catch((error) => console.error("Error fetching data:", error));
 
-  function displayTubeStatus(tubeData, elizabethLineData, nationalRailData) {
+  function displayTubeStatus(tubeData, elizabethLineData, overgroundData) {
     const lineColors = {
       Bakerloo: "#996633",
       Central: "#CC3333",
@@ -26,75 +24,43 @@ document.addEventListener("DOMContentLoaded", function () {
       Victoria: "#0099CC",
       "Waterloo & City": "#7EC8E3",
       "Hammersmith & City": "#F68C95",
-      "Liberty": "#EE7C0E",
-      "Elizabeth line": "#9E579D"
+      "Elizabeth line": "#9E579D",
+      Lioness: "#E1A700",
+      Mildmay: "#1E90FF",
+      Windrush: "#FF4500",
+      Weaver: "#800000",
+      Suffragette: "#228B22",
+      Liberty: "#808080"
     };
 
-    const tubeLines = tubeData.map((line) => {
+    const getLineHTML = (line) => {
       const lineColor = lineColors[line.name] || "#000000";
       const statusSeverity = line.lineStatuses[0].statusSeverity;
       const statusColor = getStatusColor(statusSeverity);
       const reason = line.lineStatuses[0].reason || '';
 
-        let reasonHTML = '';
-        if (reason !== '' && reason !== 'N/A') {
-            const reasonTextColor = statusColor; // Set reason text color to match status color
-            reasonHTML = `<div class="reason" style="color: ${reasonTextColor};">${reason}</div>`;
-        }
+      let reasonHTML = '';
+      if (reason !== '' && reason !== 'N/A') {
+        reasonHTML = `<div class="reason" style="color: ${statusColor};">${reason}</div>`;
+      }
 
-        return `<div class="line-container">
-                    <div class="line" style="color: ${lineColor};">
-                        <strong>${line.name}</strong>
-                        <span class="status" style="color: ${statusColor};">${line.lineStatuses[0].statusSeverityDescription}</span>
-                    </div>
-                    ${reasonHTML}
-                </div>`;
-    });
+      return `<div class="line-container">
+                <div class="line" style="color: ${lineColor};">
+                  <strong>${line.name}</strong>
+                  <span class="status" style="color: ${statusColor};">${line.lineStatuses[0].statusSeverityDescription}</span>
+                </div>
+                ${reasonHTML}
+              </div>`;
+    };
 
-    const elizabethLine = elizabethLineData.map((line) => {
-      const lineColor = lineColors[line.name] || "#000000";
-      const statusSeverity = line.lineStatuses[0].statusSeverity;
-      const statusColor = getStatusColor(statusSeverity);
-      const reason = line.lineStatuses[0].reason || '';
+    // Generate content for each table
+    const tubeLines = tubeData.map(getLineHTML);
+    const elizabethLine = elizabethLineData.map(getLineHTML);
+    const overgroundLines = overgroundData.map(getLineHTML);
 
-        let reasonHTML = '';
-        if (reason !== '' && reason !== 'N/A') {
-            const reasonTextColor = statusColor; // Set reason text color to match status color
-            reasonHTML = `<div class="reason" style="color: ${reasonTextColor};">${reason}</div>`;
-        }
-
-        return `<div class="line-container">
-                    <div class="line" style="color: ${lineColor};">
-                        <strong>${line.name}</strong>
-                        <span class="status" style="color: ${statusColor};">${line.lineStatuses[0].statusSeverityDescription}</span>
-                    </div>
-                    ${reasonHTML}
-                </div>`;
-    });
-
-    const londonOvergroundLine = nationalRailData.map((line) => {
-        const lineColor = lineColors[line.name] || "#000000";
-        const statusSeverity = line.lineStatuses[0].statusSeverity;
-        const statusColor = getStatusColor(statusSeverity);
-        const reason = line.lineStatuses[0].reason || '';
-
-        let reasonHTML = '';
-        if (reason !== '' && reason !== 'N/A') {
-            const reasonTextColor = statusColor; // Set reason text color to match status color
-            reasonHTML = `<div class="reason" style="color: ${reasonTextColor};">${reason}</div>`;
-        }
-
-        return `<div class="line-container">
-                    <div class="line" style="color: ${lineColor};">
-                        <strong>${line.name}</strong>
-                        <span class="status" style="color: ${statusColor};">${line.lineStatuses[0].statusSeverityDescription}</span>
-                    </div>
-                    ${reasonHTML}
-                </div>`;
-    });
-  const allLines = tubeLines.concat(elizabethLine, londonOvergroundLine);
-
-    statusContainer.innerHTML = `<div class="table-container">${allLines.join("")}</div>`;
+    // Insert into respective tables
+    document.querySelector(".others-table").innerHTML = tubeLines.concat(elizabethLine).join("");
+    document.querySelector(".overground-table").innerHTML = overgroundLines.join("");
   }
 
   function getStatusColor(severity) {
@@ -102,7 +68,7 @@ document.addEventListener("DOMContentLoaded", function () {
       case 10: // Good Service
         return "#00AA00"; // Green
       case 9: // Minor Delays
-        return "#E1A700"; // Orangeish
+        return "#E1A700"; // Orange
       case 8: // Severe Delays
         return "#FF0000"; // Red
       default:
