@@ -35,19 +35,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const getLineHTML = (line) => {
     const lineColor = lineColors[line.name] || "#000000";
-
-    // Iterate through all lineStatuses to combine reasons
-    const allReasons = line.lineStatuses
-        .map((status) => status.reason) // Extract reasons
-        .filter((reason) => reason && reason !== "N/A") // Filter out empty or irrelevant reasons
-        .join("<br>"); // Combine reasons with a line break
-
-    const statusSeverity = Math.max(...line.lineStatuses.map((status) => status.statusSeverity)); // Pick the highest severity
+    const statusSeverity = line.lineStatuses[0].statusSeverity;
     const statusColor = getStatusColor(statusSeverity);
+    const reason = line.lineStatuses[0].reason || '';
+
+    // Debug raw API reason
+    console.log("Raw reason for", line.name, ":", line.lineStatuses[0].reason);
+
+    // Preserve newlines for display
+    const formattedReason = reason.replace(/\n/g, "<br>");
 
     let reasonHTML = '';
-    if (allReasons) {
-        reasonHTML = `<div class="reason" style="color: ${statusColor};">${allReasons}</div>`;
+    if (reason !== '' && reason !== 'N/A') {
+        reasonHTML = `<div class="reason" style="color: ${statusColor};">${formattedReason}</div>`;
     }
 
     return `<div class="line-container">
@@ -58,7 +58,6 @@ document.addEventListener("DOMContentLoaded", function () {
               ${reasonHTML}
             </div>`;
 };
-
 
 
     // Generate content for each table
