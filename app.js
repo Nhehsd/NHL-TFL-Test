@@ -33,26 +33,32 @@ document.addEventListener("DOMContentLoaded", function () {
       Liberty: "#808080"
     };
 
-    const getLineHTML = (line) => {
-      const lineColor = lineColors[line.name] || "#000000";
-      const statusSeverity = line.lineStatuses[0].statusSeverity;
-      const statusColor = getStatusColor(statusSeverity);
-      const reason = line.lineStatuses[0].reason || '';
-      console.log(`${line.name} reason:`, reason);
+  const getLineHTML = (line) => {
+    const lineColor = lineColors[line.name] || "#000000";
+    const statusSeverity = line.lineStatuses[0].statusSeverity;
+    const statusColor = getStatusColor(statusSeverity);
+    const reason = line.lineStatuses[0].reason || '';
 
-      let reasonHTML = '';
-      if (reason !== '' && reason !== 'N/A') {
-        reasonHTML = `<div class="reason" style="color: ${statusColor};">${reason}</div>`;
-      }
+    // Debug raw API reason
+    console.log("Raw reason for", line.name, ":", line.lineStatuses[0].reason);
 
-      return `<div class="line-container">
-                <div class="line" style="color: ${lineColor};">
-                  <strong>${line.name}</strong>
-                  <span class="status" style="color: ${statusColor};">${line.lineStatuses[0].statusSeverityDescription}</span>
-                </div>
-                ${reasonHTML}
-              </div>`;
-    };
+    // Preserve newlines for display
+    const formattedReason = reason.replace(/\n/g, "<br>");
+
+    let reasonHTML = '';
+    if (reason !== '' && reason !== 'N/A') {
+        reasonHTML = `<div class="reason" style="color: ${statusColor};">${formattedReason}</div>`;
+    }
+
+    return `<div class="line-container">
+              <div class="line" style="color: ${lineColor};">
+                <strong>${line.name}</strong>
+                <span class="status" style="color: ${statusColor};">${line.lineStatuses[0].statusSeverityDescription}</span>
+              </div>
+              ${reasonHTML}
+            </div>`;
+};
+
 
     // Generate content for each table
     const tubeLines = tubeData.map(getLineHTML);
