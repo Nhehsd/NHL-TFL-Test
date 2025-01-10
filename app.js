@@ -38,6 +38,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const statusSeverity = line.lineStatuses[0].statusSeverity;
       const statusColor = getStatusColor(statusSeverity);
       const reason = line.lineStatuses[0].reason || '';
+      console.log(`${line.name} reason:`, reason);
 
       let reasonHTML = '';
       if (reason !== '' && reason !== 'N/A') {
