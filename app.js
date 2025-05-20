@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const reason = line.lineStatuses[0].reason || '';
 
     // Debug raw API reason
-    console.log("Raw reason for", line.name, ":", line.lineStatuses[0].reason);
+    //console.log("Raw reason for", line.name, ":", line.lineStatuses[0].reason);
 
     // Preserve newlines for display
     const formattedReason = reason.replace(/\n/g, "<br>");
