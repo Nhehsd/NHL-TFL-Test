@@ -12,12 +12,13 @@ const lineColors = {
   victoria: '#0099CC',
   'waterloo-city': '#7EC8E3',
   'elizabeth-line': '#9E579D',
-  lioness: "#E1A700",
-  mildmay: "#1E90FF",
-  windrush: "#FF4500",
-  weaver: "#800000",
-  suffragette: "#228B22",
-  liberty: "#808080"
+  lioness: '#E1A700',
+  mildmay: '#1E90FF',
+  windrush: '#FF4500',
+  weaver: '#800000',
+  suffragette: '#228B22',
+  liberty: '#808080',
+  'london-overground': '#E86A10'
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -44,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Autocomplete handler
   searchInput.addEventListener('input', async (e) => {
     const q = e.target.value.trim();
-    if (q.length < 1) return;
+    if (!q) return;
 
     const matches = await fetchStations(q);
     dataList.innerHTML = '';
@@ -106,14 +107,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const row = e.target.closest('.line');
     if (!row) return;
     const vehicleId = row.dataset.vehicleId;
+    const lineId    = row.dataset.lineId;
     if (!vehicleId) return;
     try {
-      const data = await fetchVehicleArrivals(vehicleId);
-      // Determine train location and prepend station if at platform
+      const rawData = await fetchVehicleArrivals(vehicleId);
+      // Filter only stops on this line
+      const data = lineId ? rawData.filter(v => v.lineId === lineId) : rawData;
+
+      // Map naptanId→stationName for lookup
+      const stopNames = new Map(data.map(v => [v.naptanId, v.stationName]));
+      // Determine train location
       let loc = data[0]?.currentLocation;
-      if (loc && /platform/i.test(loc)) {
-        const stationDisplay = idToDisplay.get(currentStopId) || searchInput.value;
-        loc = `${stationDisplay}: ${loc}`;
+      // If at a platform, prefix with previous stop on this line
+      const idx = data.findIndex(entry => entry.naptanId === currentStopId);
+      if (loc && /^at\s+/i.test(loc) && idx > 0) {
+        const prevId   = data[idx - 1].naptanId;
+        const prevName = stopNames.get(prevId) || idToDisplay.get(prevId) || '';
+        loc = `${prevName}: ${loc}`;
       }
 
       // Only show current train location
@@ -145,25 +155,41 @@ async function fetchStations(q) {
   return body.matches || [];
 }
 
-// Fetch live arrivals
+// Fetch live arrivals (including Overground & Elizabeth branches)
 async function fetchArrivals(id) {
+  // Base station arrivals
   const res = await fetch(
     `https://api.tfl.gov.uk/StopPoint/${id}/Arrivals?t=${Date.now()}`,
-    {cache:'no-store'}
+    {cache: 'no-store'}
   );
-  const data = await res.json();
-  data.sort((a,b) => a.timeToStation - b.timeToStation);
-  return data;
+  const baseArr = await res.json();
+  baseArr.sort((a, b) => a.timeToStation - b.timeToStation);
+
+  // Branch lines to include
+  const branches = ['london-overground', 'elizabeth-line'];
+  const branchPromises = branches.map(lineId =>
+    fetch(`https://api.tfl.gov.uk/line/${lineId}/Arrivals?t=${Date.now()}`, {cache:'no-store'})
+      .then(r => r.json())
+      .then(arr => arr.filter(item => item.naptanId === id))
+      .catch(() => [])
+  );
+  const branchLists = await Promise.all(branchPromises);
+  const branchArr = branchLists.flat();
+
+  // Merge and sort all arrivals
+  const allArr = [...baseArr, ...branchArr];
+  allArr.sort((a, b) => a.timeToStation - b.timeToStation);
+  return allArr;
 }
 
 // Fetch vehicle details
 async function fetchVehicleArrivals(id) {
   const res = await fetch(
     `https://api.tfl.gov.uk/Vehicle/${id}/Arrivals?t=${Date.now()}`,
-    {cache:'no-store'}
+    {cache: 'no-store'}
   );
   const data = await res.json();
-  data.sort((a,b) => a.timeToStation - b.timeToStation);
+  data.sort((a, b) => a.timeToStation - b.timeToStation);
   return data;
 }
 
@@ -180,9 +206,9 @@ function renderArrivals(arrivals) {
     return acc;
   }, {});
 
-  const platforms = Object.keys(byPlatform).sort((a,b) => {
-    const numA = parseInt((a.match(/\d+/)||[])[0],10);
-    const numB = parseInt((b.match(/\d+/)||[])[0],10);
+  const platforms = Object.keys(byPlatform).sort((a, b) => {
+    const numA = parseInt((a.match(/\d+/) || [])[0], 10);
+    const numB = parseInt((b.match(/\d+/) || [])[0], 10);
     const isNumA = !isNaN(numA);
     const isNumB = !isNaN(numB);
     if (isNumA && isNumB) return numA - numB;
@@ -200,22 +226,17 @@ function renderArrivals(arrivals) {
 
     for (const p of byPlatform[platform]) {
       const dest = p.destinationName || p.lineName || 'Unknown';
-      const mins = p.timeToStation < 60 ? 'due' : `${Math.round(p.timeToStation/60)} min`;
+      const mins = p.timeToStation < 60 ? 'due' : `${Math.round(p.timeToStation / 60)} min`;
       const color = lineColors[p.lineId] || '#333';
 
       const lineDiv = document.createElement('div');
       lineDiv.classList.add('line');
       lineDiv.dataset.vehicleId = p.vehicleId;
-      lineDiv.style.cursor = 'pointer';
+      lineDiv.dataset.lineId    = p.lineId;
+      lineDiv.style.cursor      = 'pointer';
 
-      const destEl = document.createElement('strong');
-      destEl.textContent = dest;
-      destEl.style.color = color;
-
-      const statusEl = document.createElement('span');
-      statusEl.textContent = mins;
-      statusEl.classList.add('status');
-      statusEl.style.color = color;
+      const destEl   = document.createElement('strong'); destEl.textContent = dest; destEl.style.color = color;
+      const statusEl = document.createElement('span'); statusEl.textContent = mins; statusEl.classList.add('status'); statusEl.style.color = color;
 
       lineDiv.appendChild(destEl);
       lineDiv.appendChild(statusEl);
