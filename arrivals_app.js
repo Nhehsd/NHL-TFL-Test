@@ -177,7 +177,7 @@ async function fetchArrivals(id) {
       const metaRes = await fetch(`https://api.tfl.gov.uk/StopPoint/${id}`);
       const meta = await metaRes.json();
       const children = (meta && meta.children) ? meta.children : [];
-      const wantedModes = new Set(['overground', 'elizabeth-line']);
+      const wantedModes = new Set(['overground', 'elizabeth-line', 'dlr', 'tram']);
       const childIds = [];
       const seen = new Set();
       for (const c of children) {
