@@ -1,122 +1,169 @@
+/* ===== Base Reset ===== */
 html, body {
   height: 100%;
   margin: 0;
-}
-
-h1 {
-  color: #002269;
-  background: rgba(255, 255, 255, 0.7); 
-  display: inline; 
-  padding: 0.2em 0.5em; 
-  border-radius: 5px; 
-  margin-left: 69px; 
+  padding: 0;
   font-family: 'Proxima Nova', sans-serif;
-  font-weight: bold;
 }
 
+/* ===== Body Background & Layout ===== */
 body {
   background: url('1.jpg') center center fixed;
   background-size: cover;
-  font-family: 'Proxima Nova', sans-serif;
   color: white;
+
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
+
   padding: 20px;
+
+  /* Slight zoom-out without distortion */
+  transform: scale(0.95);
+  transform-origin: center;
 }
 
+/* ===== Heading ===== */
+h1 {
+  color: #002269;
+  background: rgba(255, 255, 255, 0.75);
+  display: inline-block;
+  padding: 0.3em 0.7em;
+  border-radius: 8px;
+  margin: 10px 0 20px 0;
+  font-weight: bold;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* ===== Shared Table Container ===== */
 .table-container {
   width: 100%;
-  max-width: 800px;
+  max-width: 900px;
   margin: 20px;
-  height: 100%;
-  background-color: rgba(255, 255, 255, 0.9);
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  background-color: rgba(255, 255, 255, 0.92);
+  padding: 22px;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   overflow: hidden;
+  backdrop-filter: blur(3px);
 }
 
+/* ===== Multiple Tables Layout ===== */
+.tables-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  width: 100%;
+  max-width: 1400px;
+}
+
+/* ===== Left / Right Panels ===== */
+.table-left,
+.table-right {
+  width: 48%;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 22px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  margin: 10px;
+}
+
+.table-right {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ===== Line Container ===== */
 .line-container {
   display: flex;
   flex-direction: column;
+  gap: 12px;
   margin-bottom: 15px;
 }
 
+/* ===== Line Row ===== */
 .line {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px;
-  border-radius: 5px;
+
+  padding: 12px 14px;
+  border-radius: 8px;
+
+  /* IMPORTANT: neutral background only */
   background-color: #f0f0f0;
+
+  font-size: 15px;
+  line-height: 1.2;
+
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.line:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
 }
 
 .line strong {
-  margin-bottom: 7px;
+  margin-bottom: 6px;
 }
 
 .line .status {
   font-weight: bold;
 }
 
+/* ===== Reason Text ===== */
 .reason {
-  margin-top: 5px;
+  margin-top: 6px;
   font-size: 14px;
+  font-weight: bold;
   color: inherit;
-   font-weight: bold;
-   background-color: #f0f0f0; 
-  padding: 10px; 
-  border-radius: 5px; 
-  white-space: normal; 
-overflow: visible;   
-text-overflow: clip; 
+
+  background-color: #f0f0f0;
+  padding: 10px 12px;
+  border-radius: 8px;
+
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
-
-body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh; 
-    margin: 0; 
-    transform: scale(0.9); 
-    transform-origin: center; /* Scaling from center */
-  }
-
-
-.tables-container {
-  display: flex;
-  justify-content: space-between; 
-  align-items: flex-start; 
-  height: auto; 
-}
-
-.table-left {
-  width: 48%; 
-  background-color: rgba(255, 255, 255, 0.8); 
-  padding: 20px;
-  border-radius: 10px; 
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
-  margin: 10px; 
-}
-
-.table-right {
-  width: 48%; 
-  background-color: rgba(255, 255, 255, 0.8); 
-  padding: 20px; 
-  border-radius: 10px; 
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  display: flex;
-  justify-content: center; 
-  align-items: center; 
-  margin: 10px; 
-}
-
+/* ===== Tables ===== */
 table {
   width: 100%;
   border-collapse: collapse;
   margin: 0;
   background-color: transparent;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1000px) {
+  .tables-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .table-left,
+  .table-right {
+    width: 95%;
+  }
+}
+
+@media (max-width: 600px) {
+  body {
+    transform: scale(1);
+    padding: 10px;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+  }
+
+  .line {
+    font-size: 14px;
+  }
 }
