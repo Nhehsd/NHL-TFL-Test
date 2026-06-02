@@ -1,32 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Viewport meta tag for initial scale -->
-    <meta name="viewport" content="width=device-width, initial-scale=0.8">
-    
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TfL Tube Status</title>
-    <link rel="stylesheet" href="styles.css">
-    <meta http-equiv="refresh" content="60">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TfL Status</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <meta http-equiv="refresh" content="60">
 </head>
-
 <body>
-    <h1>TFL Status</h1>
-    <div class="tables-container">
-        <div class="table-left">
-            <!-- Table for Others -->
-            <table class="others-table">
-                
-            </table>
+  <div class="app-wrapper">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="roundel">
+          <div class="roundel-bar"></div>
+          <div class="roundel-ring"></div>
         </div>
-        <div class="table-right">
-            <!-- Table for Overground -->
-            <table class="overground-table">
-                
-            </table>
+        <div class="header-text">
+          <h1>TfL Status</h1>
+          <p class="header-subtitle">Live line status</p>
         </div>
-    </div>
-    <script src="app.js"></script>
+        <div class="last-updated" id="last-updated">Updating…</div>
+      </div>
+    </header>
+
+    <main class="panels-container">
+      <section class="panel panel-left">
+        <div class="panel-header">
+          <span class="panel-label">Tube &amp; Elizabeth line</span>
+          <span class="panel-count" id="tube-count"></span>
+        </div>
+        <div class="lines-list others-table"></div>
+      </section>
+
+      <section class="panel panel-right">
+        <div class="panel-header">
+          <span class="panel-label">Overground</span>
+          <span class="panel-count" id="og-count"></span>
+        </div>
+        <div class="lines-list overground-table"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
