@@ -11,7 +11,12 @@ const LINE_DEFS = [
   { id: 'victoria',          name: 'Victoria',           color: '#0098D4', osmRef: 'London Underground Victoria line' },
   { id: 'waterloo-city',     name: 'Waterloo & City',    color: '#93CEBA', osmRef: 'London Underground Waterloo and City line' },
   { id: 'elizabeth',         name: 'Elizabeth line',     color: '#6950A1', osmRef: 'Elizabeth line' },
-  { id: 'london-overground', name: 'Overground',         color: '#EE7C0E', osmRef: null },
+  { id: 'lioness',          name: 'Lioness',            color: '#E1A700', osmRef: 'London Overground Lioness line' },
+  { id: 'mildmay',          name: 'Mildmay',            color: '#1E90FF', osmRef: 'London Overground Mildmay line' },
+  { id: 'windrush',         name: 'Windrush',           color: '#FF4500', osmRef: 'London Overground Windrush line' },
+  { id: 'weaver',           name: 'Weaver',             color: '#800000', osmRef: 'London Overground Weaver line' },
+  { id: 'suffragette',      name: 'Suffragette',        color: '#228B22', osmRef: 'London Overground Suffragette line' },
+  { id: 'liberty',          name: 'Liberty',            color: '#808080', osmRef: 'London Overground Liberty line' },
   { id: 'dlr',               name: 'DLR',                color: '#00A4A7', osmRef: 'Docklands Light Railway' },
 ];
 
@@ -226,7 +231,7 @@ async function loadLineTrains(lineId) {
 
       trains.push({
         lat, lng,
-        estimated: lineId === 'elizabeth' || lineId === 'london-overground',
+        estimated: lineId === 'elizabeth' || lineId === 'lioness' || lineId === 'mildmay' || lineId === 'windrush' || lineId === 'weaver' || lineId === 'suffragette' || lineId === 'liberty',
         vehicleId: nextPred.vehicleId,
         dest:      nextPred.destinationName || '',
         nextName:  nextStop.name,

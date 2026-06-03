@@ -64,10 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentStopId = null;
   let refreshTimer  = null;
 
-  // ── Normalise station name for deduplication ──────────────────────────────
-  // Strips suffixes like "Underground Station", "Rail Station", "Station" etc.
-  // so "Ealing Broadway" and "Ealing Broadway Underground Station" collapse to
-  // the same canonical key.
   function canonicalName(s) {
     return (s || '')
       .replace(/\s+(underground\s+)?station$/i, '')
@@ -77,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .trim();
   }
 
-  // ── Search input handler ──────────────────────────────────────────────────
   searchInput.addEventListener('input', async (e) => {
     const q = e.target.value.trim();
     if (q.length < 2) return;
@@ -86,8 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     idToDisplay.clear();
     displayToId.clear();
 
-    // Prefer tube/overground entries; deduplicate by canonical name
-    const seenCanonical = new Map(); // canonical → best match object
+    const seenCanonical = new Map();
     const allowed = ['tube', 'overground', 'elizabeth-line', 'dlr', 'tram', 'national-rail'];
 
     for (const s of matches) {
@@ -98,7 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const canon = canonicalName(display);
 
       if (seenCanonical.has(canon)) {
-        // Prefer the entry whose modes include tube/overground over national-rail only
         const existing = seenCanonical.get(canon);
         const existingModes = existing.modes || [];
         const betterModes = ['tube', 'overground', 'elizabeth-line', 'dlr', 'tram'];
@@ -110,11 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Build datalist from deduplicated results, using the shorter/cleaner name
     for (const [canon, s] of seenCanonical) {
-      // Use the shorter of commonName vs a cleaned version
       const rawDisplay = s.commonName || s.name || '';
-      // Strip " Underground Station" / " Rail Station" suffixes from the displayed label
       const cleanDisplay = rawDisplay
         .replace(/\s+underground\s+station$/i, '')
         .replace(/\s+rail\s+station$/i, '')
@@ -129,46 +119,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ── Resolve which stop ID the user picked ────────────────────────────────
   function resolveStopId() {
     const raw = searchInput.value.trim();
-    // Exact match in datalist
     const exact = Array.from(dataList.options).find(o => o.value === raw);
     if (exact?.dataset.stopId) return exact.dataset.stopId;
-    // Canonical match
     const canon = canonicalName(raw);
     if (displayToId.has(canon)) return displayToId.get(canon);
-    // Partial match
     const partial = Array.from(dataList.options)
       .find(o => canonicalName(o.value).includes(canon) || canon.includes(canonicalName(o.value)));
     if (partial?.dataset.stopId) return partial.dataset.stopId;
     return null;
   }
 
-  // ── Search button ─────────────────────────────────────────────────────────
   searchBtn.addEventListener('click', () => {
     const stopId = resolveStopId();
     if (!stopId) { alert('Please select a valid station from the list.'); return; }
     currentStopId = stopId;
     if (refreshTimer) clearInterval(refreshTimer);
-    // Show the cleaned station name in the meta row
     const chosenOption = Array.from(dataList.options).find(o => o.dataset.stopId === stopId);
     if (chosenOption) stationNameEl.textContent = chosenOption.value;
     loadArrivals();
-    refreshTimer = setInterval(loadArrivals, 30000); // refresh every 30s
+    refreshTimer = setInterval(loadArrivals, 30000);
   });
 
   searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); searchBtn.click(); }
   });
 
-  // ── Modal ─────────────────────────────────────────────────────────────────
   modalClose.addEventListener('click', () => modalOverlay.classList.add('hidden'));
   modalOverlay.addEventListener('click', (e) => {
     if (e.target === modalOverlay) modalOverlay.classList.add('hidden');
   });
 
-  // ── Train row click → location modal ─────────────────────────────────────
   arrivalsEl.addEventListener('click', async (e) => {
     const row = e.target.closest('.train-row');
     if (!row) return;
@@ -176,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const lineId    = row.dataset.lineId;
     if (!vehicleId) return;
 
-    // Show a loading state in the modal immediately
     modalBody.innerHTML = `<p style="color:var(--text-muted)">Locating train…</p>`;
     modalOverlay.classList.remove('hidden');
 
@@ -190,26 +171,15 @@ document.addEventListener('DOMContentLoaded', () => {
       let loc       = data[0]?.currentLocation || '';
       let inferred  = false;
 
-      // ── If currentLocation is empty or blank, infer from timeToStation ──
-      // The vehicle arrivals list is sorted by timeToStation (seconds until
-      // arrival at each stop). The train is currently somewhere between the
-      // last stop with a *negative or zero* timeToStation and the first stop
-      // with a *positive* timeToStation.
-      // If all are positive the train hasn't reached the first stop yet.
       if (!loc.trim()) {
-        // Re-fetch with a fresh timestamp so times are as current as possible
-        // (we already have data, just use it — the sort is ascending by time)
-        const now = 0; // relative: negative = passed, positive = upcoming
-        
-        // Find the boundary: last stop the train has passed (timeToStation <= 30s
-        // is "effectively at"), first upcoming stop
+        const now = 0;
+
         let passedStop  = null;
         let nextStop    = null;
 
         for (let i = 0; i < data.length; i++) {
           const secs = data[i].timeToStation;
           if (secs <= 30) {
-            // Train is at or has just left this stop
             passedStop = data[i];
           } else if (!nextStop) {
             nextStop = data[i];
@@ -217,7 +187,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (passedStop && nextStop) {
-          // Travelling between two stops
           const from = cleanStationName(passedStop.stationName);
           const to   = cleanStationName(nextStop.stationName);
           const minsAway = Math.round(nextStop.timeToStation / 60);
@@ -225,21 +194,18 @@ document.addEventListener('DOMContentLoaded', () => {
           if (minsAway > 0) loc += ` · ${minsAway} min to ${to}`;
           inferred = true;
         } else if (nextStop && !passedStop) {
-          // Not yet reached any stop — approaching the first one
           const to = cleanStationName(nextStop.stationName);
           const minsAway = Math.round(nextStop.timeToStation / 60);
           loc = `Approaching ${to}`;
           if (minsAway > 0) loc += ` · ${minsAway} min`;
           inferred = true;
         } else if (passedStop && !nextStop) {
-          // At or past the last stop in sequence — at terminus
           const at = cleanStationName(passedStop.stationName);
           loc = `At ${at} (terminus)`;
           inferred = true;
         }
       }
 
-      // ── For non-empty currentLocation, fix the wrong-prepend bug ────────
       if (loc && !inferred && /^at\s+/i.test(loc)) {
         const locBody = loc.replace(/^at\s+/i, '').toLowerCase();
         const alreadySpecific = /platform\s*\d/i.test(loc) || /between\s+/i.test(loc);
@@ -263,7 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ⓘ Estimated from arrival times — Elizabeth line trains don't broadcast live position data.
           </p>`;
         }
-        // Show upcoming stops
         const upcoming = data.filter(s => s.timeToStation > 30).slice(0, 5);
         if (upcoming.length) {
           html += `<h3 style="margin-top:16px">Next stops</h3><ul style="list-style:none;padding:0;margin:6px 0 0;display:flex;flex-direction:column;gap:5px">`;
@@ -287,7 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Strip common suffixes from station names for cleaner display
   function cleanStationName(name) {
     return (name || '')
       .replace(/\s+underground\s+station$/i, '')
@@ -296,7 +260,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .trim();
   }
 
-  // ── Load + render arrivals ────────────────────────────────────────────────
   async function loadArrivals() {
     showSkeletons();
     try {
@@ -317,7 +280,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// ── API helpers ──────────────────────────────────────────────────────────────
 
 async function fetchStations(q) {
   const res = await fetch(`https://api.tfl.gov.uk/StopPoint/Search?query=${encodeURIComponent(q)}&modes=tube,overground,elizabeth-line,dlr,tram,national-rail`);
@@ -339,9 +301,6 @@ async function fetchArrivals(id) {
       const metaRes = await fetch(`https://api.tfl.gov.uk/StopPoint/${id}`);
       const meta    = await metaRes.json();
       const children = meta?.children || [];
-      // Fetch ALL child stops (tube, overground, elizabeth-line, dlr, tram, etc.)
-      // so mixed stations like Ealing Broadway return every mode's arrivals.
-      // Deduplication by vehicleId+lineId+platform below handles any overlap.
       const tflModes = new Set(['tube', 'overground', 'elizabeth-line', 'dlr', 'tram', 'national-rail']);
       const seen = new Set([id]);
       const childIds = [];
@@ -360,8 +319,6 @@ async function fetchArrivals(id) {
 
   const [baseArr, childArr] = await Promise.all([basePromise, childrenPromise]);
 
-  // Deduplicate by vehicleId+lineId+platformName to avoid double-entries from
-  // child stop queries returning the same train
   const seen = new Set();
   const all  = [];
   for (const a of [...baseArr, ...childArr]) {
@@ -379,7 +336,6 @@ async function fetchVehicleArrivals(id) {
   return data;
 }
 
-// ── Render ───────────────────────────────────────────────────────────────────
 
 function renderArrivals(arrivals) {
   const container = document.getElementById('arrivals');
@@ -390,14 +346,12 @@ function renderArrivals(arrivals) {
     return;
   }
 
-  // Group by platform
   const byPlatform = {};
   for (const p of arrivals) {
     const key = p.platformName || p.platformNaptanId || 'Unknown platform';
     (byPlatform[key] = byPlatform[key] || []).push(p);
   }
 
-  // Sort platforms: numeric first, then alphabetical
   const platforms = Object.keys(byPlatform).sort((a, b) => {
     const na = parseInt((a.match(/\d+/) || [])[0], 10);
     const nb = parseInt((b.match(/\d+/) || [])[0], 10);

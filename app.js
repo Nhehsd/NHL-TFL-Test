@@ -76,7 +76,6 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById('last-updated').textContent =
       `Updated ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
 
-    // After render: measure each card and clamp reason lines to what actually fits
     requestAnimationFrame(() => adjustReasonLines());
   }
 
@@ -88,16 +87,12 @@ document.addEventListener("DOMContentLoaded", function () {
       const cardH    = card.clientHeight;
       const nameEl   = card.querySelector('strong');
       const nameH    = nameEl ? nameEl.offsetHeight : 0;
-      // gap between name and reason (~0.3vh, min 1px)
       const gap      = parseFloat(getComputedStyle(card.querySelector('.line-body')).gap) || 2;
-      // vertical padding inside the card (top + bottom)
       const bodyStyle = getComputedStyle(card);
       const padV     = parseFloat(bodyStyle.paddingTop || 0) + parseFloat(bodyStyle.paddingBottom || 0);
 
       const reasonLineH = reason.offsetHeight / (parseInt(getComputedStyle(reason).webkitLineClamp) || 1);
-      // how many px are left for reason text
       const available  = cardH - padV - nameH - gap;
-      // how many lines fit — at least 1, at most 2
       const lines = Math.max(1, Math.min(2, Math.floor(available / (reasonLineH || 16))));
 
       reason.style.webkitLineClamp = lines;
@@ -105,7 +100,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Re-run on resize so it stays correct if the window changes
   window.addEventListener('resize', adjustReasonLines);
 
   function getStatusBadgeClass(severity) {
