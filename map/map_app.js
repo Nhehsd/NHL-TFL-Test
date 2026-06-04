@@ -1,4 +1,4 @@
-/* v2.2.0 */
+/* v2.4.0 */
 const LINE_DEFS = [
   { id: 'bakerloo',          name: 'Bakerloo',           color: '#B36305', osmRef: 'London Underground Bakerloo line' },
   { id: 'central',           name: 'Central',            color: '#E32017', osmRef: 'London Underground Central line' },
@@ -29,15 +29,27 @@ let trainMarkers = [];
 let map, osmLayer, satelliteLayer;
 let trainCanvas = null, trainCtx = null;
 
+const TOTAL_STEPS = LINE_DEFS.length * 2 + 2;
+let   loadStep    = 0;
+
+function setProgress(msg, step) {
+  const pct = Math.round((step / TOTAL_STEPS) * 100);
+  const bar  = document.getElementById('loading-bar');
+  const txt  = document.getElementById('loading-step');
+  const lmsg = document.getElementById('loading-msg');
+  if (bar)  bar.style.width  = pct + '%';
+  if (txt)  txt.textContent  = pct + '%';
+  if (lmsg) lmsg.textContent = msg;
+}
+
 window.addEventListener('load', async () => {
   initMap();
   buildToggles();
   setupModal();
 
-  document.getElementById('loading-msg').textContent = 'Loading track geometry…';
+  setProgress('Initialising…', 0);
   await loadAllOsmTracks();
 
-  document.getElementById('loading-msg').textContent = 'Fetching stops & trains…';
   await loadAllStopsAndTrains();
 
   document.getElementById('loading').style.display = 'none';
@@ -105,19 +117,33 @@ async function tflFetch(url, retries = 3) {
 }
 
 async function loadAllStopsAndTrains() {
-  for (const l of LINE_DEFS) {
+  for (let i = 0; i < LINE_DEFS.length; i++) {
+    const l = LINE_DEFS[i];
+    setProgress(`Loading ${l.name} stops…`, i + 1);
     await loadLineStops(l.id);
-    await delay(120);
+    await delay(300);
   }
+  await delay(500);
   await loadAllTrains();
 }
 
 async function loadLineStops(lineId) {
   try {
-    const [outRes, inRes] = await Promise.allSettled([
-      tflFetch(`https://api.tfl.gov.uk/Line/${lineId}/Route/Sequence/outbound?excludeCrowding=true`),
-      tflFetch(`https://api.tfl.gov.uk/Line/${lineId}/Route/Sequence/inbound?excludeCrowding=true`),
-    ]);
+    const cacheKey = `tfl_stops_${lineId}`;
+    let sequences = null;
+
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      sequences = JSON.parse(cached);
+    } else {
+      const data = await tflFetch(`https://api.tfl.gov.uk/Line/${lineId}/Route/Sequence/outbound?excludeCrowding=true`);
+      sequences = data?.stopPointSequences || [];
+      try { sessionStorage.setItem(cacheKey, JSON.stringify(sequences)); } catch {}
+    }
+
+    const fakeRes = { status: 'fulfilled', value: { stopPointSequences: sequences } };
+    const outRes = fakeRes, inRes = { status: 'rejected' };
+
     if (!lineData[lineId]) lineData[lineId] = { stops: [], stopMap: new Map(), polylines: [], stationMarkers: [] };
     const ld = lineData[lineId];
 
@@ -206,10 +232,13 @@ async function loadLineStops(lineId) {
 }
 
 async function loadAllTrains() {
-  for (const l of LINE_DEFS) {
+  for (let i = 0; i < LINE_DEFS.length; i++) {
+    const l = LINE_DEFS[i];
+    setProgress(`Loading ${l.name} trains…`, LINE_DEFS.length + i + 1);
     await loadLineTrains(l.id);
-    await delay(80);
+    await delay(250);
   }
+  setProgress('Ready!', TOTAL_STEPS);
   const total = Object.values(trainData).reduce((s, a) => s + a.length, 0);
   const now   = new Date();
   document.getElementById('status-text').textContent =
@@ -219,7 +248,7 @@ async function loadAllTrains() {
 async function loadLineTrains(lineId) {
   try {
     const data = await tflFetch(`https://api.tfl.gov.uk/Line/${lineId}/Arrivals?t=${Date.now()}`);
-    if (!Array.isArray(data)) { trainData[lineId] = []; return; }
+    if (!Array.isArray(data)) return;
 
     const byVehicle = new Map();
     for (const p of data) {
@@ -262,9 +291,10 @@ async function loadLineTrains(lineId) {
     }
 
     const seen = new Set();
-    trainData[lineId] = trains.filter(t => { if (seen.has(t.vehicleId)) return false; seen.add(t.vehicleId); return true; });
+    const fresh = trains.filter(t => { if (seen.has(t.vehicleId)) return false; seen.add(t.vehicleId); return true; });
+    if (fresh.length > 0) trainData[lineId] = fresh;
   } catch (e) {
-    trainData[lineId] = trainData[lineId] || [];
+    if (!trainData[lineId]) trainData[lineId] = [];
   }
 }
 

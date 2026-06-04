@@ -1,4 +1,4 @@
-<!-- v2.2.0 -->
+<!-- v2.4.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -132,11 +132,17 @@
     #loading {
       position: absolute; inset: 52px 0 0 0; z-index: 1100;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 12px; background: var(--bg);
+      gap: 16px; background: var(--bg);
     }
-    .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--tfl-red); border-radius: 50%; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    #loading-msg { font-size: 0.8rem; color: var(--text-muted); }
+    .loading-roundel { position: relative; width: 48px; height: 48px; flex-shrink: 0; }
+    .loading-roundel-ring { position: absolute; inset: 0; border-radius: 50%; border: 6px solid var(--tfl-blue); }
+    .loading-roundel-bar  { position: absolute; top: 50%; left: -3px; right: -3px; height: 13px; transform: translateY(-50%); background: var(--tfl-red); z-index: 1; }
+    #loading-msg { font-size: 0.82rem; color: var(--text-muted); font-weight: 500; text-align: center; }
+    .loading-bar-wrap { width: 260px; display: flex; flex-direction: column; gap: 7px; }
+    .loading-bar-track { width: 100%; height: 4px; background: rgba(255,255,255,0.07); border-radius: 99px; overflow: hidden; }
+    .loading-bar-fill { height: 100%; width: 0%; background: var(--tfl-red); border-radius: 99px; transition: width 0.5s ease; }
+    .loading-step-text { font-size: 0.67rem; color: var(--text-dim); font-family: var(--font-mono); text-align: right; }
 
     /* ── Modal ── */
     #modal-overlay {
@@ -246,15 +252,24 @@
   <div class="htext"><h1>Live Train Map</h1><p>Real-time positions · London</p></div>
   <div class="spacer"></div>
   <span id="status-text">Loading…</span>
-  <span class="version-badge">v2.2.0</span>
+  <span class="version-badge">v2.4.0</span>
   <a href="../arrivals/" class="back-link">← Arrivals</a>
 </div>
 
 <div id="map"></div>
 
 <div id="loading">
-  <div class="spinner"></div>
-  <p id="loading-msg">Loading map…</p>
+  <div class="loading-roundel">
+    <div class="loading-roundel-bar"></div>
+    <div class="loading-roundel-ring"></div>
+  </div>
+  <p id="loading-msg">Starting up…</p>
+  <div class="loading-bar-wrap">
+    <div class="loading-bar-track">
+      <div class="loading-bar-fill" id="loading-bar"></div>
+    </div>
+    <div class="loading-step-text" id="loading-step"></div>
+  </div>
 </div>
 
 <!-- Map style toggle -->
