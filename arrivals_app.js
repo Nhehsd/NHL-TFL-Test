@@ -1,3 +1,4 @@
+/* v2.1.0 */
 const lineColors = {
   bakerloo:           '#996633',
   central:            '#CC3333',
