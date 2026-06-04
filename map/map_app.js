@@ -1,4 +1,4 @@
-/* v2.5.0 */
+/* v2.6.0 */
 const LINE_DEFS = [
   { id: 'bakerloo',          name: 'Bakerloo',           color: '#B36305', osmRef: 'London Underground Bakerloo line' },
   { id: 'central',           name: 'Central',            color: '#E32017', osmRef: 'London Underground Central line' },
@@ -198,7 +198,7 @@ async function loadLineStops(lineId) {
             pane: 'linesPane',
           });
           poly._lineId = lineId;
-          poly.on('click', e => { L.DomEvent.stopPropagation(e); selectLine(lineId); });
+          poly.on('click', e => { L.DomEvent.stopPropagation(e); if (_blockClicks) return; selectLine(lineId); });
           poly.on('mouseover', () => { if (!selectedLine) poly.setStyle({ weight: 6, opacity: 1 }); });
           poly.on('mouseout',  () => { if (!selectedLine) poly.setStyle({ weight: 4, opacity: 0.9 }); });
           if (!hiddenLines.has(lineId)) poly.addTo(map);
@@ -222,7 +222,7 @@ async function loadLineStops(lineId) {
       });
       circle._stationName = name;
       circle._stationId   = s.id;
-      circle.on('click', e => { L.DomEvent.stopPropagation(e); showStationModal(s.id, name); });
+      circle.on('click', e => { L.DomEvent.stopPropagation(e); if (_blockClicks) return; showStationModal(s.id, name); });
       if (!hiddenLines.has(lineId)) circle.addTo(map);
       ld.stationMarkers.push(circle);
     }
@@ -439,10 +439,13 @@ function handleMapHover(e) {
 }
 
 function handleMapClick(e) {
+  if (_blockClicks) return;
   const hit = getTrainAtScreen(e.originalEvent.clientX, e.originalEvent.clientY);
   if (hit) { e.originalEvent.stopPropagation(); showTrainModal(hit.t, hit.lineDef); return; }
   if (selectedLine) deselectLine();
 }
+
+let _blockClicks = false;
 
 function setupModal() {
   document.getElementById('modal-close').addEventListener('click', closeModal);
@@ -450,7 +453,11 @@ function setupModal() {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   });
 }
-function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  _blockClicks = true;
+  setTimeout(() => { _blockClicks = false; }, 400);
+}
 function openModal(html) {
   document.getElementById('modal-body').innerHTML = html;
   document.getElementById('modal-overlay').classList.remove('hidden');
