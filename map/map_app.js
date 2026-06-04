@@ -88,8 +88,13 @@ async function loadOsmTrack(lineDef) {
   if (!lineData[lineDef.id]) lineData[lineDef.id] = { stops: [], stopMap: new Map(), polylines: [], stationMarkers: [] };
 }
 
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
 async function loadAllStopsAndTrains() {
-  await Promise.allSettled(LINE_DEFS.map(l => loadLineStops(l.id)));
+  for (const l of LINE_DEFS) {
+    await loadLineStops(l.id);
+    await delay(120);
+  }
   await loadAllTrains();
 }
 
@@ -187,7 +192,10 @@ async function loadLineStops(lineId) {
 }
 
 async function loadAllTrains() {
-  await Promise.allSettled(LINE_DEFS.map(l => loadLineTrains(l.id)));
+  for (const l of LINE_DEFS) {
+    await loadLineTrains(l.id);
+    await delay(80);
+  }
   const total = Object.values(trainData).reduce((s, a) => s + a.length, 0);
   const now   = new Date();
   document.getElementById('status-text').textContent =
