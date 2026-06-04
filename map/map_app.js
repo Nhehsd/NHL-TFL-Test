@@ -409,7 +409,7 @@ async function showTrainModal(t, lineDef) {
   openModal(`<div class="modal-line-badge"><div class="modal-line-pip" style="background:${lineDef.color}"></div>${lineDef.name}</div><div class="modal-dest">${t.dest || 'Unknown destination'}</div><div class="modal-vehicle">Vehicle ${t.vehicleId}</div><div class="modal-loading"><div class="modal-spinner"></div>Fetching live data…</div>`);
   try {
     const res  = await fetch(`https://api.tfl.gov.uk/Vehicle/${t.vehicleId}/Arrivals?t=${Date.now()}`, { cache: 'no-store' });
-    let   data = await res.json();
+    let data = await res.json();
     if (!Array.isArray(data) || !data.length) throw new Error('No data');
     const filtered = data.filter(v => v.lineId === t.lineId);
     if (filtered.length) data = filtered;
@@ -433,6 +433,10 @@ async function showTrainModal(t, lineDef) {
       }
     }
 
+    const journeyHTML = buildJourneyProgress(data, t.lineId, lineDef.color);
+
+    const crowdingHTML = await buildCrowdingBar(data, t.lineId);
+
     const nextStops = data.filter(s => s.timeToStation > 30).slice(0, 8);
     const stopsHTML = nextStops.length ? `<div class="modal-section-title">Next stops</div><div class="modal-stops">${nextStops.map((s,i) => {
       const m = Math.round(s.timeToStation/60);
@@ -441,9 +445,80 @@ async function showTrainModal(t, lineDef) {
       return `<div class="modal-stop-row"><div class="modal-stop-dot ${i===0?'next':''}"></div><span class="modal-stop-name">${cleanName(s.stationName)}</span><span class="modal-stop-time ${cls}">${label}</span></div>`;
     }).join('')}</div>` : '';
 
-    openModal(`<div class="modal-line-badge"><div class="modal-line-pip" style="background:${lineDef.color}"></div>${lineDef.name}</div><div class="modal-dest">→ ${t.dest || 'Unknown destination'}</div><div class="modal-vehicle">Vehicle ID: ${t.vehicleId}</div>${loc ? `<div class="modal-section-title">Current location</div><div class="modal-location">${loc}</div>${estimated ? '<div class="modal-est-note">⚠ Position estimated from arrival times</div>' : ''}` : ''}${stopsHTML}`);
+    openModal(`
+      <div class="modal-line-badge"><div class="modal-line-pip" style="background:${lineDef.color}"></div>${lineDef.name}</div>
+      <div class="modal-dest">→ ${t.dest || 'Unknown destination'}</div>
+      <div class="modal-vehicle">Vehicle ID: ${t.vehicleId}</div>
+      ${journeyHTML}
+      ${crowdingHTML}
+      ${loc ? `<div class="modal-section-title">Current location</div><div class="modal-location">${loc}</div>${estimated ? '<div class="modal-est-note">⚠ Position estimated from arrival times</div>' : ''}` : ''}
+      ${stopsHTML}
+    `);
   } catch {
     openModal(`<div class="modal-line-badge"><div class="modal-line-pip" style="background:${lineDef.color}"></div>${lineDef.name}</div><div class="modal-dest">${t.dest || 'Unknown destination'}</div><div style="color:var(--text-muted);font-size:0.85rem;margin-top:12px">Unable to load details for this train.</div>`);
+  }
+}
+
+function buildJourneyProgress(data, lineId, color) {
+  const ld = lineData[lineId];
+  if (!ld || !ld.stops.length) return '';
+
+  const totalStops    = ld.stops.length;
+  const stopsLeft     = data.filter(s => s.timeToStation > 30).length;
+  const stopsComplete = Math.max(0, totalStops - stopsLeft - 1);
+  const pct           = Math.round((stopsComplete / (totalStops - 1)) * 100);
+  const originStop    = cleanName(ld.stops[0]?.name || '');
+  const destStop      = cleanName(ld.stops[ld.stops.length - 1]?.name || '');
+
+  return `
+    <div class="modal-section-title">Journey progress</div>
+    <div class="journey-bar-wrap">
+      <div class="journey-endpoints">
+        <span>${originStop}</span><span>${destStop}</span>
+      </div>
+      <div class="journey-bar-track">
+        <div class="journey-bar-fill" style="width:${pct}%;background:${color}"></div>
+        <div class="journey-bar-dot" style="left:${pct}%;border-color:${color}"></div>
+      </div>
+      <div class="journey-pct">${pct}% · ${stopsComplete} of ${totalStops - 1} stops completed</div>
+    </div>
+  `;
+}
+
+async function buildCrowdingBar(data, lineId) {
+  const nextStop = data.find(s => s.timeToStation > 30);
+  if (!nextStop?.naptanId) return '';
+
+  try {
+    const now  = new Date();
+    const hour = now.getHours();
+    const res  = await fetch(`https://api.tfl.gov.uk/StopPoint/${nextStop.naptanId}/Crowding/${lineId}`);
+    const json = await res.json();
+
+    const timeBands = json?.crowding?.passengerFlows || [];
+    const band = timeBands.find(b => {
+      const [h] = (b.timeSlice || '').split(':').map(Number);
+      return h === hour;
+    }) || timeBands[0];
+
+    if (!band) return '';
+
+    const value = band.value || 0;
+    const pct   = Math.min(100, Math.round(value * 100));
+    const cls   = pct < 40 ? 'crowd-low' : pct < 70 ? 'crowd-mid' : 'crowd-high';
+    const label = pct < 40 ? 'Quiet' : pct < 70 ? 'Moderate' : 'Busy';
+
+    return `
+      <div class="modal-section-title">Predicted crowding <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-dim);font-size:0.6rem">historical average</span></div>
+      <div class="crowd-bar-wrap">
+        <div class="crowd-bar-track">
+          <div class="crowd-bar-fill ${cls}" style="width:${pct}%"></div>
+        </div>
+        <span class="crowd-label ${cls}">${label}</span>
+      </div>
+    `;
+  } catch {
+    return '';
   }
 }
 
