@@ -4,114 +4,289 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Station Arrivals</title>
-  <link rel="stylesheet" href="../styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    /* Search bar styling */
-    .search-container {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 1em;
+    /* ===== Tokens (mirrors main styles.css) ===== */
+    :root {
+      --bg:          #0d0f14;
+      --surface:     #14171f;
+      --surface-2:   #1c2030;
+      --surface-3:   #222740;
+      --border:      rgba(255,255,255,0.07);
+      --border-hover:rgba(255,255,255,0.16);
+      --text-primary:#f0f2f7;
+      --text-muted:  #6b7385;
+      --text-dim:    #3d4356;
+      --tfl-blue:    #003087;
+      --tfl-red:     #e21836;
+      --good:        #22c55e;
+      --warn:        #f59e0b;
+      --bad:         #ef4444;
+      --radius-sm:   6px;
+      --radius-md:   10px;
+      --radius-lg:   16px;
+      --font-main:   'DM Sans', system-ui, sans-serif;
+      --font-mono:   'DM Mono', monospace;
     }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: var(--font-main);
+      background: var(--bg);
+      color: var(--text-primary);
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .app-wrapper {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column;
+      min-height: 100vh;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 16px 32px;
+    }
+
+    /* ===== Header ===== */
+    .app-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 0 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .roundel { position: relative; flex-shrink: 0; width: 36px; height: 36px; }
+    .roundel-ring { position: absolute; inset: 0; border-radius: 50%; border: 5px solid var(--tfl-blue); }
+    .roundel-bar  { position: absolute; top: 50%; left: -2px; right: -2px; height: 10px; transform: translateY(-50%); background: var(--tfl-red); z-index: 1; }
+
+    .header-text h1 { font-size: 1.1rem; font-weight: 700; }
+    .header-text p  { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+
+    /* ===== Search bar ===== */
+    .search-row {
+      display: flex; gap: 10px;
+      margin-bottom: 16px;
+    }
+
     #station-search {
       flex: 1;
-      padding: 0.6em;
-      border-radius: 5px;
-      border: 1px solid #ccc;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font-main);
+      font-size: 0.95rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.15s;
     }
+    #station-search:focus { border-color: var(--border-hover); }
+    #station-search::placeholder { color: var(--text-dim); }
+
     #search-btn {
-      padding: 0.6em 1.2em;
+      flex-shrink: 0;
+      background: var(--tfl-blue);
+      color: #fff;
       border: none;
-      border-radius: 5px;
-      background: #002269;
-      color: white;
+      border-radius: var(--radius-md);
+      font-family: var(--font-main);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 10px 20px;
       cursor: pointer;
+      transition: opacity 0.15s;
     }
-    /* Container relative positioning for timestamp */
-    .table-container {
-      position: relative;
+    #search-btn:hover { opacity: 0.85; }
+
+    /* ===== Meta row ===== */
+    .meta-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+      min-height: 20px;
     }
-    /* Arrivals list styling */
-    #arrivals {
-      max-height: 65vh;
-      overflow-y: auto;
-      padding: 1em;
+    #station-name-display {
+      font-size: 0.85rem; font-weight: 600; color: var(--text-muted);
     }
-    /* Text color for arrivals */
-    #arrivals, #arrivals .line-container, #arrivals .line, #arrivals .line strong, #arrivals .status {
-      color: #002269;
-    }
-    /* Last updated label */
     #last-updated {
-      text-align: right;
-      margin: 0 10px 10px 0;
-      font-size: 0.9em;
-      color: #333;
+      font-family: var(--font-mono);
+      font-size: 0.68rem; color: var(--text-dim);
     }
-    /* Modal overlay */
-    .hidden {
-      display: none;
+
+    /* ===== Arrivals container ===== */
+    #arrivals { display: flex; flex-direction: column; gap: 14px; }
+
+    /* ===== Platform section ===== */
+    .platform-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
     }
+
+    .platform-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.025);
+      border-bottom: 1px solid var(--border);
+    }
+    .platform-header h2 {
+      font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* ===== Train row ===== */
+    .train-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .train-row:last-child { border-bottom: none; }
+    .train-row:hover { background: rgba(255,255,255,0.03); }
+
+    .line-pip {
+      flex-shrink: 0;
+      width: 4px; height: 28px;
+      border-radius: 2px;
+    }
+
+    .train-dest {
+      flex: 1; min-width: 0;
+      font-size: 0.9rem; font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .train-line-label {
+      font-size: 0.68rem; font-weight: 500;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .train-time {
+      flex-shrink: 0;
+      font-size: 0.82rem; font-weight: 700;
+      font-family: var(--font-mono);
+      padding: 4px 10px;
+      border-radius: 99px;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+    .train-time.due  { color: var(--bad);  border-color: var(--bad);  background: rgba(239,68,68,0.08); }
+    .train-time.soon { color: var(--warn); border-color: var(--warn); background: rgba(245,158,11,0.08); }
+    .train-time.ok   { color: var(--good); border-color: var(--good); background: rgba(34,197,94,0.08); }
+
+    /* ===== Empty / loading state ===== */
+    .state-msg {
+      text-align: center; color: var(--text-muted);
+      padding: 40px 16px; font-size: 0.9rem;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position:  400px 0; }
+    }
+    .skeleton-row {
+      height: 52px;
+      background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 50%, var(--surface-2) 75%);
+      background-size: 400px 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: var(--radius-md);
+    }
+
+    /* ===== Modal ===== */
     #modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
       z-index: 1000;
+      backdrop-filter: blur(4px);
     }
+    #modal-overlay.hidden { display: none; }
+
     .modal-content {
       position: relative;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 1.5em;
-      border-radius: 8px;
-      max-width: 90%;
-      max-height: 90%;
-      overflow-y: auto;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px 28px;
+      max-width: 480px; width: 90%;
+      max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     }
-    /* Ensure modal text is dark */
-.modal-content {
-  color: #333 !important;
-}
+    .modal-content h3 {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 8px;
+    }
+    .modal-content p {
+      font-size: 0.95rem; color: var(--text-primary); line-height: 1.5;
+    }
     #modal-close {
-      position: absolute;
-      top: 0.5em;
-      right: 1em;
-      font-size: 1.5em;
-      cursor: pointer;
+      position: absolute; top: 14px; right: 18px;
+      font-size: 1.3rem; color: var(--text-muted);
+      cursor: pointer; line-height: 1;
+      background: none; border: none;
     }
+    #modal-close:hover { color: var(--text-primary); }
   </style>
 </head>
 <body>
-  <h1>Station Arrivals</h1>
+  <div class="app-wrapper">
+    <header class="app-header">
+      <div class="roundel">
+        <div class="roundel-bar"></div>
+        <div class="roundel-ring"></div>
+      </div>
+      <div class="header-text">
+        <h1>Station Arrivals</h1>
+        <p>Live departure board</p>
+      </div>
+    </header>
 
-  <div class="table-container">
-    <!-- Search controls -->
-    <div class="search-container">
-      <input type="text" id="station-search" list="stations" placeholder="Start typing a station…" autocomplete="on" />
+    <div class="search-row">
+      <input type="text" id="station-search" list="stations" placeholder="Search for a station…" autocomplete="off" />
       <datalist id="stations"></datalist>
-      <button id="search-btn">Go</button>
+      <button id="search-btn">Search</button>
     </div>
 
-   
-    <p id="last-updated">Last updated: --</p>
+    <div class="meta-row">
+      <span id="station-name-display"></span>
+      <span id="last-updated"></span>
+    </div>
 
-    <!-- Arrivals list -->
     <div id="arrivals">
-      
+      <div class="state-msg">Enter a station name above to see live arrivals.</div>
     </div>
   </div>
 
-  <!-- Modal overlay for train details -->
+  <!-- Modal -->
   <div id="modal-overlay" class="hidden">
     <div class="modal-content">
-      <span id="modal-close">&times;</span>
+      <button id="modal-close">&times;</button>
       <div id="modal-body"></div>
     </div>
+  </div>
+
+  <div style="text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
+    <a href="../map/" style="display:inline-flex;align-items:center;gap:8px;font-size:0.82rem;color:var(--text-muted);text-decoration:none;padding:8px 16px;border:1px solid var(--border);border-radius:8px;transition:color .15s,border-color .15s"
+       onmouseover="this.style.color='#f0f2f7';this.style.borderColor='rgba(255,255,255,0.2)'"
+       onmouseout="this.style.color='';this.style.borderColor=''">
+      🗺 View live train map
+    </a>
   </div>
 
   <script src="../arrivals_app.js"></script>

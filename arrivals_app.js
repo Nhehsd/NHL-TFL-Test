@@ -1,166 +1,288 @@
 const lineColors = {
-  bakerloo: '#996633',
-  central: '#CC3333',
-  circle: '#E1A700',
-  district: '#006633',
+  bakerloo:           '#996633',
+  central:            '#CC3333',
+  circle:             '#E1A700',
+  district:           '#006633',
   'hammersmith-city': '#F68C95',
-  jubilee: '#868F98',
-  metropolitan: '#660066',
-  northern: '#000000',
-  piccadilly: '#0019a8',
-  victoria: '#0099CC',
-  'waterloo-city': '#7EC8E3',
-  elizabeth: '#9E579D',
-  'elizabeth-line': '#9E579D',
-  'london-overground': '#EE7C0E',
-  lioness: '#E1A700',
-  mildmay: '#1E90FF',
-  windrush: '#FF4500',
-  weaver: '#800000',
-  suffragette: '#228B22',
-  liberty: '#808080'
+  jubilee:            '#868F98',
+  metropolitan:       '#660066',
+  northern:           '#000000',
+  piccadilly:         '#0019a8',
+  victoria:           '#0099CC',
+  'waterloo-city':    '#7EC8E3',
+  elizabeth:          '#9E579D',
+  'elizabeth-line':   '#9E579D',
+  'london-overground':'#EE7C0E',
+  lioness:            '#E1A700',
+  mildmay:            '#1E90FF',
+  windrush:           '#FF4500',
+  weaver:             '#800000',
+  suffragette:        '#228B22',
+  liberty:            '#808080',
+  dlr:                '#009999',
+  tram:               '#66A429',
+};
+
+const lineNames = {
+  bakerloo:           'Bakerloo',
+  central:            'Central',
+  circle:             'Circle',
+  district:           'District',
+  'hammersmith-city': 'Hammersmith & City',
+  jubilee:            'Jubilee',
+  metropolitan:       'Metropolitan',
+  northern:           'Northern',
+  piccadilly:         'Piccadilly',
+  victoria:           'Victoria',
+  'waterloo-city':    'Waterloo & City',
+  elizabeth:          'Elizabeth line',
+  'elizabeth-line':   'Elizabeth line',
+  'london-overground':'Overground',
+  lioness:            'Lioness',
+  mildmay:            'Mildmay',
+  windrush:           'Windrush',
+  weaver:             'Weaver',
+  suffragette:        'Suffragette',
+  liberty:            'Liberty',
+  dlr:                'DLR',
+  tram:               'Tram',
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-  const searchInput   = document.getElementById('station-search');
-  const dataList      = document.getElementById('stations');
-  const searchBtn     = document.getElementById('search-btn');
-  const lastUpdatedEl = document.getElementById('last-updated');
-  const arrivalsEl    = document.getElementById('arrivals');
-  const modalOverlay = document.getElementById('modal-overlay');
-  const modalBody    = document.getElementById('modal-body');
-  const modalClose   = document.getElementById('modal-close');
+  const searchInput      = document.getElementById('station-search');
+  const dataList         = document.getElementById('stations');
+  const searchBtn        = document.getElementById('search-btn');
+  const lastUpdatedEl    = document.getElementById('last-updated');
+  const arrivalsEl       = document.getElementById('arrivals');
+  const stationNameEl    = document.getElementById('station-name-display');
+  const modalOverlay     = document.getElementById('modal-overlay');
+  const modalBody        = document.getElementById('modal-body');
+  const modalClose       = document.getElementById('modal-close');
 
   let idToDisplay   = new Map();
   let displayToId   = new Map();
   let currentStopId = null;
   let refreshTimer  = null;
 
-  modalOverlay.style.display = 'none';
-
-  function normalise(s) {
+  function canonicalName(s) {
     return (s || '')
+      .replace(/\s+(underground\s+)?station$/i, '')
+      .replace(/\s+rail$/i, '')
       .toLowerCase()
-      .replace(/station\b/gi, 'station')
       .replace(/\s+/g, ' ')
       .trim();
   }
 
   searchInput.addEventListener('input', async (e) => {
     const q = e.target.value.trim();
-    if (!q) return;
+    if (q.length < 2) return;
     const matches = await fetchStations(q);
     dataList.innerHTML = '';
     idToDisplay.clear();
     displayToId.clear();
-    const seen = new Set();
+
+    const seenCanonical = new Map();
+    const allowed = ['tube', 'overground', 'elizabeth-line', 'dlr', 'tram', 'national-rail'];
+
     for (const s of matches) {
       const modes = s.modes || [];
-      const allowed = ['tube', 'overground', 'elizabeth-line', 'dlr', 'tram', 'national-rail'];
       if (!modes.some(m => allowed.includes(m))) continue;
       const display = s.commonName || s.name || '';
       if (!display) continue;
-      if (seen.has(display)) continue;
-      seen.add(display);
+      const canon = canonicalName(display);
+
+      if (seenCanonical.has(canon)) {
+        const existing = seenCanonical.get(canon);
+        const existingModes = existing.modes || [];
+        const betterModes = ['tube', 'overground', 'elizabeth-line', 'dlr', 'tram'];
+        const newIsBetter = modes.some(m => betterModes.includes(m)) &&
+                            !existingModes.some(m => betterModes.includes(m));
+        if (newIsBetter) seenCanonical.set(canon, s);
+      } else {
+        seenCanonical.set(canon, s);
+      }
+    }
+
+    for (const [canon, s] of seenCanonical) {
+      const rawDisplay = s.commonName || s.name || '';
+      const cleanDisplay = rawDisplay
+        .replace(/\s+underground\s+station$/i, '')
+        .replace(/\s+rail\s+station$/i, '')
+        .trim();
+
       const opt = document.createElement('option');
-      opt.value = display;
+      opt.value = cleanDisplay;
       opt.dataset.stopId = s.id;
       dataList.appendChild(opt);
-      idToDisplay.set(s.id, display);
-      displayToId.set(normalise(display), s.id);
+      idToDisplay.set(s.id, cleanDisplay);
+      displayToId.set(canon, s.id);
     }
   });
 
-  function resolveStopIdFromInput() {
+  function resolveStopId() {
     const raw = searchInput.value.trim();
     const exact = Array.from(dataList.options).find(o => o.value === raw);
-    if (exact && exact.dataset.stopId) return exact.dataset.stopId;
-    const norm = normalise(raw);
-    const fromMap = displayToId.get(norm);
-    if (fromMap) return fromMap;
-    const optEq = Array.from(dataList.options).find(o => normalise(o.value) === norm);
-    if (optEq && optEq.dataset.stopId) return optEq.dataset.stopId;
-    const optIncl = Array.from(dataList.options).find(o => {
-      const ov = normalise(o.value);
-      return ov.includes(norm) || norm.includes(ov);
-    });
-    if (optIncl && optIncl.dataset.stopId) return optIncl.dataset.stopId;
+    if (exact?.dataset.stopId) return exact.dataset.stopId;
+    const canon = canonicalName(raw);
+    if (displayToId.has(canon)) return displayToId.get(canon);
+    const partial = Array.from(dataList.options)
+      .find(o => canonicalName(o.value).includes(canon) || canon.includes(canonicalName(o.value)));
+    if (partial?.dataset.stopId) return partial.dataset.stopId;
     return null;
   }
 
   searchBtn.addEventListener('click', () => {
-    const stopId = resolveStopIdFromInput();
-    if (!stopId) {
-      alert('Please select a valid station from the list.');
-      return;
-    }
+    const stopId = resolveStopId();
+    if (!stopId) { alert('Please select a valid station from the list.'); return; }
     currentStopId = stopId;
     if (refreshTimer) clearInterval(refreshTimer);
-    updateArrivals();
-    refreshTimer = setInterval(updateArrivals, 60000);
+    const chosenOption = Array.from(dataList.options).find(o => o.dataset.stopId === stopId);
+    if (chosenOption) stationNameEl.textContent = chosenOption.value;
+    loadArrivals();
+    refreshTimer = setInterval(loadArrivals, 30000);
   });
 
   searchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      searchBtn.click();
-    }
+    if (e.key === 'Enter') { e.preventDefault(); searchBtn.click(); }
   });
 
-  modalClose.addEventListener('click', () => {
-    modalOverlay.style.display = 'none';
-  });
+  modalClose.addEventListener('click', () => modalOverlay.classList.add('hidden'));
   modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) {
-      modalOverlay.style.display = 'none';
-    }
+    if (e.target === modalOverlay) modalOverlay.classList.add('hidden');
   });
 
   arrivalsEl.addEventListener('click', async (e) => {
-    const row = e.target.closest('.line');
+    const row = e.target.closest('.train-row');
     if (!row) return;
     const vehicleId = row.dataset.vehicleId;
     const lineId    = row.dataset.lineId;
     if (!vehicleId) return;
+
+    modalBody.innerHTML = `<p style="color:var(--text-muted)">Locating train…</p>`;
+    modalOverlay.classList.remove('hidden');
+
     try {
-      const rawData = await fetchVehicleArrivals(vehicleId);
-      let data = rawData;
+      let data = await fetchVehicleArrivals(vehicleId);
       if (lineId) {
-        const filtered = rawData.filter(v => v.lineId === lineId || (lineId === 'london-overground' && v.lineId === 'london-overground'));
+        const filtered = data.filter(v => v.lineId === lineId);
         if (filtered.length) data = filtered;
       }
-      const stopNames = new Map(data.map(v => [v.naptanId, v.stationName]));
-      let loc = data[0]?.currentLocation;
-      if (!loc) {
-        const stName = data[0]?.stationName;
-        if (stName) loc = `Near ${stName}`;
+
+      let loc       = data[0]?.currentLocation || '';
+      let inferred  = false;
+
+      if (!loc.trim()) {
+        const now = 0;
+
+        let passedStop  = null;
+        let nextStop    = null;
+
+        for (let i = 0; i < data.length; i++) {
+          const secs = data[i].timeToStation;
+          if (secs <= 30) {
+            passedStop = data[i];
+          } else if (!nextStop) {
+            nextStop = data[i];
+          }
+        }
+
+        if (passedStop && nextStop) {
+          const from = cleanStationName(passedStop.stationName);
+          const to   = cleanStationName(nextStop.stationName);
+          const minsAway = Math.round(nextStop.timeToStation / 60);
+          loc = `Between ${from} and ${to}`;
+          if (minsAway > 0) loc += ` · ${minsAway} min to ${to}`;
+          inferred = true;
+        } else if (nextStop && !passedStop) {
+          const to = cleanStationName(nextStop.stationName);
+          const minsAway = Math.round(nextStop.timeToStation / 60);
+          loc = `Approaching ${to}`;
+          if (minsAway > 0) loc += ` · ${minsAway} min`;
+          inferred = true;
+        } else if (passedStop && !nextStop) {
+          const at = cleanStationName(passedStop.stationName);
+          loc = `At ${at} (terminus)`;
+          inferred = true;
+        }
       }
-      const idx = data.findIndex(entry => entry.naptanId === currentStopId);
-      if (loc && /^at\s+/i.test(loc) && idx > 0) {
-        const prevId   = data[idx - 1].naptanId;
-        const prevName = stopNames.get(prevId) || idToDisplay.get(prevId) || '';
-        loc = `${prevName}: ${loc}`;
+
+      if (loc && !inferred && /^at\s+/i.test(loc)) {
+        const locBody = loc.replace(/^at\s+/i, '').toLowerCase();
+        const alreadySpecific = /platform\s*\d/i.test(loc) || /between\s+/i.test(loc);
+        if (!alreadySpecific) {
+          const idx = data.findIndex(entry => entry.naptanId === currentStopId);
+          if (idx > 0) {
+            const prevStop = data[idx - 1];
+            const prevName = prevStop.stationName || idToDisplay.get(prevStop.naptanId) || '';
+            if (prevName && !locBody.includes(prevName.toLowerCase())) {
+              loc = `${prevName}: ${loc}`;
+            }
+          }
+        }
       }
+
       let html = '';
-      if (loc) html += `<h3>Train location</h3><p>${loc}</p>`;
+      if (loc) {
+        html += `<h3>Train location</h3><p>${loc}</p>`;
+        if (inferred) {
+          html += `<p style="font-size:0.75rem;color:var(--text-muted);margin-top:10px">
+            ⓘ Estimated from arrival times — Elizabeth line trains don't broadcast live position data.
+          </p>`;
+        }
+        const upcoming = data.filter(s => s.timeToStation > 30).slice(0, 5);
+        if (upcoming.length) {
+          html += `<h3 style="margin-top:16px">Next stops</h3><ul style="list-style:none;padding:0;margin:6px 0 0;display:flex;flex-direction:column;gap:5px">`;
+          for (const s of upcoming) {
+            const m = Math.round(s.timeToStation / 60);
+            const label = m <= 1 ? '1 min' : `${m} min`;
+            html += `<li style="display:flex;justify-content:space-between;font-size:0.88rem">
+              <span>${cleanStationName(s.stationName)}</span>
+              <span style="font-family:var(--font-mono);color:var(--text-muted)">${label}</span>
+            </li>`;
+          }
+          html += '</ul>';
+        }
+      } else {
+        html = `<p style="color:var(--text-muted)">Location not available for this train.</p>`;
+      }
+
       modalBody.innerHTML = html;
-      modalOverlay.style.display = 'flex';
     } catch {
-      modalBody.textContent = 'Unable to fetch train details';
-      modalOverlay.style.display = 'flex';
+      modalBody.innerHTML = `<p style="color:var(--text-muted)">Unable to fetch train details.</p>`;
     }
   });
 
-  async function updateArrivals() {
-    const arr = await fetchArrivals(currentStopId);
-    renderArrivals(arr);
+  function cleanStationName(name) {
+    return (name || '')
+      .replace(/\s+underground\s+station$/i, '')
+      .replace(/\s+rail\s+station$/i, '')
+      .replace(/\s+station$/i, '')
+      .trim();
+  }
+
+  async function loadArrivals() {
+    showSkeletons();
+    try {
+      const arr = await fetchArrivals(currentStopId);
+      renderArrivals(arr);
+    } catch {
+      arrivalsEl.innerHTML = '<div class="state-msg">Unable to load arrivals. Check your connection.</div>';
+    }
     const now = new Date();
-    lastUpdatedEl.textContent = `Last updated: ${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+    lastUpdatedEl.textContent =
+      `Updated ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+  }
+
+  function showSkeletons() {
+    arrivalsEl.innerHTML = Array(3).fill(
+      `<div class="platform-section"><div class="skeleton-row" style="margin:10px"></div><div class="skeleton-row" style="margin:10px;opacity:.6"></div></div>`
+    ).join('');
   }
 });
 
+
 async function fetchStations(q) {
-  const res = await fetch(`https://api.tfl.gov.uk/StopPoint/Search?query=${encodeURIComponent(q)}`);
+  const res = await fetch(`https://api.tfl.gov.uk/StopPoint/Search?query=${encodeURIComponent(q)}&modes=tube,overground,elizabeth-line,dlr,tram,national-rail`);
   const body = await res.json();
   return body.matches || [];
 }
@@ -171,88 +293,106 @@ async function fetchArrivals(id) {
     const arr = await res.json();
     return Array.isArray(arr) ? arr : [];
   }
+
   const basePromise = getArrivalsFor(id);
+
   const childrenPromise = (async () => {
     try {
       const metaRes = await fetch(`https://api.tfl.gov.uk/StopPoint/${id}`);
-      const meta = await metaRes.json();
-      const children = (meta && meta.children) ? meta.children : [];
-      const wantedModes = new Set(['overground', 'elizabeth-line', 'dlr', 'tram']);
+      const meta    = await metaRes.json();
+      const children = meta?.children || [];
+      const tflModes = new Set(['tube', 'overground', 'elizabeth-line', 'dlr', 'tram', 'national-rail']);
+      const seen = new Set([id]);
       const childIds = [];
-      const seen = new Set();
       for (const c of children) {
-        const modes = c.modes || [];
-        const cid = c.id;
-        if (!cid) continue;
-        if (modes.some(m => wantedModes.has(m)) && !seen.has(cid)) {
-          seen.add(cid);
-          childIds.push(cid);
+        if (!c.id || seen.has(c.id)) continue;
+        if ((c.modes || []).some(m => tflModes.has(m))) {
+          seen.add(c.id);
+          childIds.push(c.id);
         }
       }
       if (!childIds.length) return [];
-      const promises = childIds.map(cid => getArrivalsFor(cid).catch(() => []));
-      const lists = await Promise.all(promises);
+      const lists = await Promise.all(childIds.map(cid => getArrivalsFor(cid).catch(() => [])));
       return lists.flat();
-    } catch {
-      return [];
-    }
+    } catch { return []; }
   })();
+
   const [baseArr, childArr] = await Promise.all([basePromise, childrenPromise]);
-  const all = [...baseArr, ...childArr];
+
+  const seen = new Set();
+  const all  = [];
+  for (const a of [...baseArr, ...childArr]) {
+    const key = `${a.vehicleId}|${a.lineId}|${a.platformName}`;
+    if (!seen.has(key)) { seen.add(key); all.push(a); }
+  }
   all.sort((a, b) => a.timeToStation - b.timeToStation);
   return all;
 }
 
 async function fetchVehicleArrivals(id) {
-  const res = await fetch(`https://api.tfl.gov.uk/Vehicle/${id}/Arrivals?t=${Date.now()}`, {cache: 'no-store'});
+  const res  = await fetch(`https://api.tfl.gov.uk/Vehicle/${id}/Arrivals?t=${Date.now()}`, { cache: 'no-store' });
   const data = await res.json();
   data.sort((a, b) => a.timeToStation - b.timeToStation);
   return data;
 }
 
+
 function renderArrivals(arrivals) {
   const container = document.getElementById('arrivals');
   container.innerHTML = '';
+
   if (!arrivals.length) {
-    container.textContent = 'No upcoming services for this station.';
+    container.innerHTML = '<div class="state-msg">No upcoming services found for this station.</div>';
     return;
   }
-  const byPlatform = arrivals.reduce((acc, p) => {
-    const key = p.platformName || p.platformNaptanId || 'Platform';
-    (acc[key] = acc[key] || []).push(p);
-    return acc;
-  }, {});
+
+  const byPlatform = {};
+  for (const p of arrivals) {
+    const key = p.platformName || p.platformNaptanId || 'Unknown platform';
+    (byPlatform[key] = byPlatform[key] || []).push(p);
+  }
+
   const platforms = Object.keys(byPlatform).sort((a, b) => {
-    const numA = parseInt((a.match(/\d+/) || [])[0], 10);
-    const numB = parseInt((b.match(/\d+/) || [])[0], 10);
-    const isNumA = !isNaN(numA);
-    const isNumB = !isNaN(numB);
-    if (isNumA && isNumB) return numA - numB;
-    if (isNumA) return -1;
-    if (isNumB) return 1;
+    const na = parseInt((a.match(/\d+/) || [])[0], 10);
+    const nb = parseInt((b.match(/\d+/) || [])[0], 10);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    if (!isNaN(na)) return -1;
+    if (!isNaN(nb)) return 1;
     return a.localeCompare(b);
   });
+
   for (const platform of platforms) {
     const section = document.createElement('div');
-    section.classList.add('line-container');
-    const header = document.createElement('h2');
-    header.textContent = platform;
+    section.className = 'platform-section';
+
+    const header = document.createElement('div');
+    header.className = 'platform-header';
+    header.innerHTML = `<h2>${platform}</h2>`;
     section.appendChild(header);
+
     for (const p of byPlatform[platform]) {
-      const dest = p.destinationName || p.lineName || 'Unknown';
-      const mins = p.timeToStation < 60 ? 'due' : `${Math.round(p.timeToStation / 60)} min`;
-      const color = lineColors[p.lineId] || '#333';
-      const lineDiv = document.createElement('div');
-      lineDiv.classList.add('line');
-      lineDiv.dataset.vehicleId = p.vehicleId;
-      lineDiv.dataset.lineId    = p.lineId;
-      lineDiv.style.cursor      = 'pointer';
-      const destEl   = document.createElement('strong'); destEl.textContent = dest; destEl.style.color = color;
-      const statusEl = document.createElement('span'); statusEl.textContent = mins; statusEl.classList.add('status'); statusEl.style.color = color;
-      lineDiv.appendChild(destEl);
-      lineDiv.appendChild(statusEl);
-      section.appendChild(lineDiv);
+      const dest   = p.destinationName || p.lineName || 'Unknown';
+      const secs   = p.timeToStation;
+      const mins   = Math.round(secs / 60);
+      const timeLabel = secs < 30 ? 'Due' : `${mins} min`;
+      const timeClass = secs < 30 ? 'due' : mins <= 2 ? 'soon' : 'ok';
+      const color  = lineColors[p.lineId] || '#6b7385';
+      const lname  = lineNames[p.lineId]  || p.lineName || p.lineId || '';
+
+      const row = document.createElement('div');
+      row.className = 'train-row';
+      row.dataset.vehicleId = p.vehicleId || '';
+      row.dataset.lineId    = p.lineId    || '';
+
+      row.innerHTML = `
+        <div class="line-pip" style="background:${color}"></div>
+        <span class="train-dest">${dest}</span>
+        <span class="train-line-label">${lname}</span>
+        <span class="train-time ${timeClass}">${timeLabel}</span>
+      `;
+      section.appendChild(row);
     }
+
     container.appendChild(section);
   }
 }

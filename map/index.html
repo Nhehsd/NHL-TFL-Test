@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Train Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root {
+      --bg:          #0d0f14;
+      --surface:     #14171f;
+      --border:      rgba(255,255,255,0.07);
+      --text-primary:#f0f2f7;
+      --text-muted:  #6b7385;
+      --text-dim:    #3d4356;
+      --tfl-blue:    #003087;
+      --tfl-red:     #e21836;
+      --font-main:   'DM Sans', system-ui, sans-serif;
+      --font-mono:   'DM Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; overflow: hidden; background: var(--bg); color: var(--text-primary); font-family: var(--font-main); }
+
+    /* ── Header ── */
+    .header {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
+      display: flex; align-items: center; gap: 12px;
+      height: 52px; padding: 0 16px;
+      background: rgba(13,15,20,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .roundel { position: relative; flex-shrink: 0; width: 30px; height: 30px; }
+    .roundel-ring { position: absolute; inset: 0; border-radius: 50%; border: 4px solid var(--tfl-blue); }
+    .roundel-bar  { position: absolute; top: 50%; left: -2px; right: -2px; height: 8px; transform: translateY(-50%); background: var(--tfl-red); z-index: 1; }
+    .htext h1 { font-size: 0.95rem; font-weight: 700; line-height: 1.1; }
+    .htext p  { font-size: 0.63rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .spacer { flex: 1; }
+    #status-text { font-family: var(--font-mono); font-size: 0.63rem; color: var(--text-dim); white-space: nowrap; }
+    .back-link {
+      font-size: 0.73rem; color: var(--text-muted); text-decoration: none;
+      padding: 5px 11px; border: 1px solid var(--border); border-radius: 6px;
+      transition: color .15s, border-color .15s; white-space: nowrap;
+    }
+    .back-link:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.2); }
+
+    /* ── Map ── */
+    #map {
+      position: absolute; top: 52px; left: 0; right: 0; bottom: 0;
+    }
+
+    /* Override Leaflet attribution to match dark theme */
+    .leaflet-control-attribution {
+      background: rgba(13,15,20,0.8) !important;
+      color: var(--text-dim) !important;
+      font-size: 0.6rem !important;
+    }
+    .leaflet-control-attribution a { color: var(--text-muted) !important; }
+    .leaflet-control-zoom a {
+      background: rgba(13,15,20,0.9) !important;
+      color: var(--text-muted) !important;
+      border-color: var(--border) !important;
+    }
+    .leaflet-control-zoom a:hover { color: var(--text-primary) !important; }
+
+    /* ── Map style toggle ── */
+    .map-toggle {
+      position: absolute; top: 68px; right: 16px; z-index: 999;
+      display: flex;
+      background: rgba(13,15,20,0.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .map-toggle-btn {
+      padding: 6px 14px;
+      font-family: var(--font-main);
+      font-size: 0.72rem; font-weight: 600;
+      color: var(--text-muted);
+      background: none; border: none; cursor: pointer;
+      transition: color .15s, background .15s;
+      white-space: nowrap;
+    }
+    .map-toggle-btn.active {
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.08);
+    }
+    .map-toggle-btn + .map-toggle-btn {
+      border-left: 1px solid var(--border);
+    }
+
+    /* ── Line toggles ── */
+    .toggles {
+      position: absolute; bottom: 16px; right: 16px; z-index: 999;
+      background: rgba(13,15,20,0.92); backdrop-filter: blur(10px);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 14px; display: flex; flex-direction: column; gap: 4px;
+      max-height: calc(100vh - 130px); overflow-y: auto;
+    }
+    .toggles::-webkit-scrollbar { width: 3px; }
+    .toggles::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .tog-title { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 2px; }
+    .tog-row {
+      display: flex; align-items: center; gap: 7px; font-size: 0.72rem;
+      cursor: pointer; padding: 2px 0; user-select: none;
+      transition: opacity .15s; color: var(--text-muted);
+    }
+    .tog-row:hover { color: var(--text-primary); }
+    .tog-row.off { opacity: 0.3; }
+    .tog-pip { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Legend ── */
+    .legend {
+      position: absolute; bottom: 16px; left: 16px; z-index: 999;
+      background: rgba(13,15,20,0.92); backdrop-filter: blur(10px);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 14px; display: flex; flex-direction: column; gap: 5px;
+    }
+    .leg-title { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 2px; }
+    .leg-row { display: flex; align-items: center; gap: 7px; font-size: 0.7rem; color: var(--text-muted); }
+    .leg-line { width: 18px; height: 3px; border-radius: 2px; flex-shrink: 0; background: #555; }
+    .leg-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: rgba(255,255,255,0.4); }
+    .leg-train     { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; background: var(--tfl-red); flex-shrink: 0; }
+    .leg-train-est { width: 10px; height: 10px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); background: #9E579D; flex-shrink: 0; opacity:.8; }
+
+    /* ── Loading ── */
+    #loading {
+      position: absolute; inset: 52px 0 0 0; z-index: 1100;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; background: var(--bg);
+    }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--tfl-red); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading-msg { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ── Modal ── */
+    #modal-overlay {
+      position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #modal-overlay.hidden { display: none; }
+    .modal-box {
+      position: relative; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 22px 24px 20px; width: min(420px, 92vw);
+      max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    }
+    .modal-box::-webkit-scrollbar { width: 3px; }
+    .modal-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .modal-close { position: absolute; top: 14px; right: 16px; background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; line-height: 1; padding: 2px; }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-line-badge { display: inline-flex; align-items: center; gap: 7px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 10px; }
+    .modal-line-pip { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .modal-dest { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; line-height: 1.2; }
+    .modal-vehicle { font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-dim); margin-bottom: 16px; }
+    .modal-section-title { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin: 14px 0 6px; }
+    .modal-location { font-size: 0.88rem; color: var(--text-primary); line-height: 1.5; padding: 10px 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; }
+    .modal-est-note { font-size: 0.68rem; color: #9E579D; margin-top: 6px; font-style: italic; }
+    .modal-stops { display: flex; flex-direction: column; }
+    .modal-stop-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .modal-stop-row:last-child { border-bottom: none; }
+    .modal-stop-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--text-dim); background: var(--bg); }
+    .modal-stop-dot.next { border-color: #fff; background: rgba(255,255,255,0.15); }
+    .modal-stop-name { flex: 1; color: var(--text-primary); }
+    .modal-stop-time { font-family: var(--font-mono); font-size: 0.75rem; padding: 2px 8px; border-radius: 99px; border: 1px solid; white-space: nowrap; }
+    .modal-stop-time.due  { color: #ef4444; border-color: #ef4444; background: rgba(239,68,68,0.08); }
+    .modal-stop-time.soon { color: #f59e0b; border-color: #f59e0b; background: rgba(245,158,11,0.08); }
+    .modal-stop-time.ok   { color: #22c55e; border-color: #22c55e; background: rgba(34,197,94,0.08); }
+    .modal-loading { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 0.85rem; padding: 8px 0; }
+    .modal-spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--tfl-red); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+
+    .journey-bar-wrap { margin: 4px 0 2px; }
+    .journey-endpoints { display:flex; justify-content:space-between; font-size:0.68rem; color:var(--text-muted); margin-bottom:5px; }
+    .journey-bar-track { position:relative; height:6px; background:rgba(255,255,255,0.08); border-radius:99px; margin-bottom:6px; }
+    .journey-bar-fill  { height:100%; border-radius:99px; transition:width .3s ease; }
+    .journey-bar-dot   {
+      position:absolute; top:50%; transform:translate(-50%,-50%);
+      width:12px; height:12px; border-radius:50%;
+      background:#0d0f14; border:2px solid;
+      transition:left .3s ease;
+    }
+    .journey-pct { font-size:0.68rem; color:var(--text-muted); text-align:right; }
+
+    .crowd-bar-wrap  { display:flex; align-items:center; gap:10px; margin:4px 0 2px; }
+    .crowd-bar-track { flex:1; height:6px; background:rgba(255,255,255,0.08); border-radius:99px; overflow:hidden; }
+    .crowd-bar-fill  { height:100%; border-radius:99px; transition:width .3s ease; }
+    .crowd-bar-fill.crowd-low  { background:#22c55e; }
+    .crowd-bar-fill.crowd-mid  { background:#f59e0b; }
+    .crowd-bar-fill.crowd-high { background:#ef4444; }
+    .crowd-label { font-size:0.72rem; font-weight:700; white-space:nowrap; }
+    .crowd-label.crowd-low  { color:#22c55e; }
+    .crowd-label.crowd-mid  { color:#f59e0b; }
+    .crowd-label.crowd-high { color:#ef4444; }
+
+    .station-tooltip {
+      background: rgba(13,15,20,0.95) !important;
+      border: 1px solid rgba(255,255,255,0.12) !important;
+      border-radius: 6px !important;
+      color: #f0f2f7 !important;
+      font-family: 'DM Sans', sans-serif !important;
+      font-size: 0.78rem !important;
+      font-weight: 600 !important;
+      padding: 4px 9px !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+      white-space: nowrap !important;
+    }
+    .station-tooltip::before { display: none !important; }
+    .leaflet-tooltip-top.station-tooltip::before { display: none !important; }
+
+    /* Tooltip */
+    #train-tooltip {
+      position: fixed; z-index: 1500; pointer-events: none;
+      background: rgba(13,15,20,0.96); backdrop-filter: blur(8px);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; font-size: 0.78rem; display: none; max-width: 240px;
+    }
+    #train-tooltip strong { display: block; color: var(--text-primary); margin-bottom: 2px; }
+    #train-tooltip .tt-sub { display: block; color: var(--text-muted); font-size: 0.7rem; }
+    #train-tooltip .tt-est { display: block; color: #9E579D; font-size: 0.68rem; margin-top: 3px; font-style: italic; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="roundel"><div class="roundel-bar"></div><div class="roundel-ring"></div></div>
+  <div class="htext"><h1>Live Train Map</h1><p>Real-time positions · London</p></div>
+  <div class="spacer"></div>
+  <span id="status-text">Loading…</span>
+  <a href="../arrivals/" class="back-link">← Arrivals</a>
+</div>
+
+<div id="map"></div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p id="loading-msg">Loading map…</p>
+</div>
+
+<!-- Map style toggle -->
+<div class="map-toggle">
+  <button class="map-toggle-btn active" id="btn-map">🗺 Map</button>
+  <button class="map-toggle-btn" id="btn-satellite">🛰 Satellite</button>
+</div>
+
+<!-- Line toggles -->
+<div class="toggles" id="line-toggles">
+  <div class="tog-title">Show / hide</div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="leg-title">Legend</div>
+  <div class="leg-row"><div class="leg-line"></div>Line route (OSM)</div>
+  <div class="leg-row"><div class="leg-dot"></div>Station</div>
+  <div class="leg-row"><div class="leg-train"></div>Train (live)</div>
+  <div class="leg-row"><div class="leg-train-est"></div>Train (estimated)</div>
+</div>
+
+<!-- Train tooltip -->
+<div id="train-tooltip"></div>
+
+<!-- Train detail modal -->
+<div id="modal-overlay" class="hidden">
+  <div class="modal-box">
+    <button class="modal-close" id="modal-close">&times;</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="map_app.js"></script>
+</body>
+</html>

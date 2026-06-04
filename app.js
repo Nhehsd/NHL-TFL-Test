@@ -76,7 +76,6 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById('last-updated').textContent =
       `Updated ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
 
-    
     requestAnimationFrame(() => adjustReasonLines());
   }
 
@@ -88,16 +87,12 @@ document.addEventListener("DOMContentLoaded", function () {
       const cardH    = card.clientHeight;
       const nameEl   = card.querySelector('strong');
       const nameH    = nameEl ? nameEl.offsetHeight : 0;
-     
       const gap      = parseFloat(getComputedStyle(card.querySelector('.line-body')).gap) || 2;
-
       const bodyStyle = getComputedStyle(card);
       const padV     = parseFloat(bodyStyle.paddingTop || 0) + parseFloat(bodyStyle.paddingBottom || 0);
 
       const reasonLineH = reason.offsetHeight / (parseInt(getComputedStyle(reason).webkitLineClamp) || 1);
-    
       const available  = cardH - padV - nameH - gap;
-    
       const lines = Math.max(1, Math.min(2, Math.floor(available / (reasonLineH || 16))));
 
       reason.style.webkitLineClamp = lines;
@@ -105,7 +100,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  
   window.addEventListener('resize', adjustReasonLines);
 
   function getStatusBadgeClass(severity) {
