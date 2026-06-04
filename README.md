@@ -79,26 +79,6 @@ All TfL API calls use a `tflFetch()` wrapper with automatic retry on 429 rate-li
 
 ---
 
-## Running locally
-
-No build step required. Just open any of the HTML files in a browser, or serve the folder with any static server:
-
-```bash
-npx serve .
-```
-
-or with Python:
-
-```bash
-python -m http.server 8080
-```
-
-Then open `http://localhost:8080`.
-
-> **Note:** The TfL API does not require an API key for public endpoints but is rate-limited. Opening the map page fires approximately 19 sequential requests on load (one per line, spaced 300ms apart). Refreshing rapidly may trigger 429 responses — the app will retry automatically.
-
----
-
 ## Known limitations
 
 - **Train positions are estimates** — TfL does not expose real-time GPS coordinates via the public API. Positions are interpolated between stops using `timeToStation` values from the arrivals feed. Elizabeth line and Overground trains are particularly approximate and shown with a visual indicator.
