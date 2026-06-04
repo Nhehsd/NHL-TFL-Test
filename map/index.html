@@ -1,4 +1,4 @@
-<!-- v2.1.0 -->
+<!-- v2.2.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -224,6 +224,19 @@
     #train-tooltip strong { display: block; color: var(--text-primary); margin-bottom: 2px; }
     #train-tooltip .tt-sub { display: block; color: var(--text-muted); font-size: 0.7rem; }
     #train-tooltip .tt-est { display: block; color: #9E579D; font-size: 0.68rem; margin-top: 3px; font-style: italic; }
+
+    .version-badge {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 99px;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -233,6 +246,7 @@
   <div class="htext"><h1>Live Train Map</h1><p>Real-time positions · London</p></div>
   <div class="spacer"></div>
   <span id="status-text">Loading…</span>
+  <span class="version-badge">v2.2.0</span>
   <a href="../arrivals/" class="back-link">← Arrivals</a>
 </div>
 

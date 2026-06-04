@@ -1,4 +1,4 @@
-/* v2.1.0 */
+/* v2.2.0 */
 const LINE_DEFS = [
   { id: 'bakerloo',          name: 'Bakerloo',           color: '#B36305', osmRef: 'London Underground Bakerloo line' },
   { id: 'central',           name: 'Central',            color: '#E32017', osmRef: 'London Underground Central line' },
@@ -91,6 +91,19 @@ async function loadOsmTrack(lineDef) {
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
+async function tflFetch(url, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    const res  = await fetch(url, { cache: 'no-store' });
+    if (res.status === 429) {
+      const wait = (i + 1) * 3000;
+      await delay(wait);
+      continue;
+    }
+    return res.json();
+  }
+  throw new Error('Rate limited after retries');
+}
+
 async function loadAllStopsAndTrains() {
   for (const l of LINE_DEFS) {
     await loadLineStops(l.id);
@@ -102,8 +115,8 @@ async function loadAllStopsAndTrains() {
 async function loadLineStops(lineId) {
   try {
     const [outRes, inRes] = await Promise.allSettled([
-      fetch(`https://api.tfl.gov.uk/Line/${lineId}/Route/Sequence/outbound?excludeCrowding=true`).then(r => r.json()),
-      fetch(`https://api.tfl.gov.uk/Line/${lineId}/Route/Sequence/inbound?excludeCrowding=true`).then(r => r.json()),
+      tflFetch(`https://api.tfl.gov.uk/Line/${lineId}/Route/Sequence/outbound?excludeCrowding=true`),
+      tflFetch(`https://api.tfl.gov.uk/Line/${lineId}/Route/Sequence/inbound?excludeCrowding=true`),
     ]);
     if (!lineData[lineId]) lineData[lineId] = { stops: [], stopMap: new Map(), polylines: [], stationMarkers: [] };
     const ld = lineData[lineId];
@@ -205,8 +218,7 @@ async function loadAllTrains() {
 
 async function loadLineTrains(lineId) {
   try {
-    const res  = await fetch(`https://api.tfl.gov.uk/Line/${lineId}/Arrivals?t=${Date.now()}`, { cache: 'no-store' });
-    const data = await res.json();
+    const data = await tflFetch(`https://api.tfl.gov.uk/Line/${lineId}/Arrivals?t=${Date.now()}`);
     if (!Array.isArray(data)) { trainData[lineId] = []; return; }
 
     const byVehicle = new Map();
@@ -417,8 +429,7 @@ function openModal(html) {
 async function showTrainModal(t, lineDef) {
   openModal(`<div class="modal-line-badge"><div class="modal-line-pip" style="background:${lineDef.color}"></div>${lineDef.name}</div><div class="modal-dest">${t.dest || 'Unknown destination'}</div><div class="modal-vehicle">Vehicle ${t.vehicleId}</div><div class="modal-loading"><div class="modal-spinner"></div>Fetching live data…</div>`);
   try {
-    const res  = await fetch(`https://api.tfl.gov.uk/Vehicle/${t.vehicleId}/Arrivals?t=${Date.now()}`, { cache: 'no-store' });
-    let data = await res.json();
+    let data = await tflFetch(`https://api.tfl.gov.uk/Vehicle/${t.vehicleId}/Arrivals?t=${Date.now()}`);
     if (!Array.isArray(data) || !data.length) throw new Error('No data');
     const filtered = data.filter(v => v.lineId === t.lineId);
     if (filtered.length) data = filtered;
@@ -501,8 +512,7 @@ async function buildCrowdingBar(data, lineId) {
   try {
     const now  = new Date();
     const hour = now.getHours();
-    const res  = await fetch(`https://api.tfl.gov.uk/StopPoint/${nextStop.naptanId}/Crowding/${lineId}`);
-    const json = await res.json();
+    const json = await tflFetch(`https://api.tfl.gov.uk/StopPoint/${nextStop.naptanId}/Crowding/${lineId}`);
 
     const timeBands = json?.crowding?.passengerFlows || [];
     const band = timeBands.find(b => {
@@ -562,8 +572,7 @@ async function showStationModal(stopId, stationName) {
   `);
 
   try {
-    const res  = await fetch(`https://api.tfl.gov.uk/StopPoint/${stopId}/Arrivals?t=${Date.now()}`, { cache: 'no-store' });
-    let   arr  = await res.json();
+    let arr = await tflFetch(`https://api.tfl.gov.uk/StopPoint/${stopId}/Arrivals?t=${Date.now()}`);
     if (!Array.isArray(arr)) throw new Error('No data');
 
     const children = await fetchChildArrivals(stopId);
@@ -629,8 +638,7 @@ async function showStationModal(stopId, stationName) {
 
 async function fetchChildArrivals(stopId) {
   try {
-    const metaRes = await fetch(`https://api.tfl.gov.uk/StopPoint/${stopId}`);
-    const meta    = await metaRes.json();
+    const meta = await tflFetch(`https://api.tfl.gov.uk/StopPoint/${stopId}`);
     const tflModes = new Set(['tube','overground','elizabeth-line','dlr','tram','national-rail']);
     const seen = new Set([stopId]);
     const childIds = [];
@@ -640,8 +648,7 @@ async function fetchChildArrivals(stopId) {
     }
     if (!childIds.length) return [];
     const lists = await Promise.all(childIds.map(id =>
-      fetch(`https://api.tfl.gov.uk/StopPoint/${id}/Arrivals?t=${Date.now()}`, { cache: 'no-store' })
-        .then(r => r.json()).catch(() => [])
+      tflFetch(`https://api.tfl.gov.uk/StopPoint/${id}/Arrivals?t=${Date.now()}`).catch(() => [])
     ));
     return lists.flat().filter(Boolean);
   } catch { return []; }

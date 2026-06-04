@@ -1,4 +1,18 @@
-/* v2.1.0 */
+/* v2.2.0 */
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+async function tflFetch(url, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (res.status === 429) {
+      await delay((i + 1) * 3000);
+      continue;
+    }
+    return res.json();
+  }
+  throw new Error('Rate limited');
+}
+
 const lineColors = {
   bakerloo:           '#996633',
   central:            '#CC3333',
@@ -283,15 +297,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 async function fetchStations(q) {
-  const res = await fetch(`https://api.tfl.gov.uk/StopPoint/Search?query=${encodeURIComponent(q)}&modes=tube,overground,elizabeth-line,dlr,tram,national-rail`);
-  const body = await res.json();
+  const body = await tflFetch(`https://api.tfl.gov.uk/StopPoint/Search?query=${encodeURIComponent(q)}&modes=tube,overground,elizabeth-line,dlr,tram,national-rail`);
   return body.matches || [];
 }
 
 async function fetchArrivals(id) {
   async function getArrivalsFor(stopId) {
-    const res = await fetch(`https://api.tfl.gov.uk/StopPoint/${stopId}/Arrivals?t=${Date.now()}`, { cache: 'no-store' });
-    const arr = await res.json();
+    const arr = await tflFetch(`https://api.tfl.gov.uk/StopPoint/${stopId}/Arrivals?t=${Date.now()}`).catch(() => []);
     return Array.isArray(arr) ? arr : [];
   }
 
@@ -299,8 +311,7 @@ async function fetchArrivals(id) {
 
   const childrenPromise = (async () => {
     try {
-      const metaRes = await fetch(`https://api.tfl.gov.uk/StopPoint/${id}`);
-      const meta    = await metaRes.json();
+      const meta = await tflFetch(`https://api.tfl.gov.uk/StopPoint/${id}`);
       const children = meta?.children || [];
       const tflModes = new Set(['tube', 'overground', 'elizabeth-line', 'dlr', 'tram', 'national-rail']);
       const seen = new Set([id]);
@@ -331,8 +342,7 @@ async function fetchArrivals(id) {
 }
 
 async function fetchVehicleArrivals(id) {
-  const res  = await fetch(`https://api.tfl.gov.uk/Vehicle/${id}/Arrivals?t=${Date.now()}`, { cache: 'no-store' });
-  const data = await res.json();
+  const data = await tflFetch(`https://api.tfl.gov.uk/Vehicle/${id}/Arrivals?t=${Date.now()}`);
   data.sort((a, b) => a.timeToStation - b.timeToStation);
   return data;
 }

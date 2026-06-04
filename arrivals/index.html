@@ -1,4 +1,4 @@
-<!-- v2.1.0 -->
+<!-- v2.2.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -243,6 +243,19 @@
       background: none; border: none;
     }
     #modal-close:hover { color: var(--text-primary); }
+
+    .version-badge {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 99px;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -256,6 +269,7 @@
         <h1>Station Arrivals</h1>
         <p>Live departure board</p>
       </div>
+      <span class="version-badge">v2.2.0</span>
     </header>
 
     <div class="search-row">
