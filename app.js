@@ -1,4 +1,4 @@
-/* v2.4.0 */
+/* v2.5.0 */
 document.addEventListener("DOMContentLoaded", function () {
   const tubeApiUrl          = `https://api.tfl.gov.uk/line/mode/tube/status`;
   const elizabethLineApiUrl = 'https://api.tfl.gov.uk/line/elizabeth/status';
@@ -72,6 +72,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const oCount = overgroundLines.length;
     document.getElementById('tube-count').textContent = `${tCount} lines`;
     document.getElementById('og-count').textContent   = `${oCount} lines`;
+
+    const ogHasDelays = overgroundData.some(l => l.lineStatuses[0].statusSeverity !== 10);
+    document.querySelector('.panel-left').classList.toggle('expanded', !ogHasDelays);
+    document.querySelector('.panel-right').classList.toggle('compact', !ogHasDelays);
 
     const now = new Date();
     document.getElementById('last-updated').textContent =

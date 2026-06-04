@@ -1,4 +1,4 @@
-/* v2.4.0 */
+/* v2.5.0 */
 /* ===== Design Tokens ===== */
 :root {
   --bg:           #0d0f14;
@@ -115,8 +115,10 @@ h1 { font-size: clamp(14px, 2vh, 36px); font-weight: 700; letter-spacing: -0.01e
   min-height: 0;
 }
 
-.panel-left  { flex: 2; }
-.panel-right { flex: 1; }
+.panel-left  { flex: 2; transition: flex 0.6s ease; }
+.panel-right { flex: 1; transition: flex 0.6s ease; }
+.panel-left.expanded  { flex: 3.5; }
+.panel-right.compact  { flex: 0.8; }
 
 .panel-header {
   flex-shrink: 0;
