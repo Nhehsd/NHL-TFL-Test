@@ -83,7 +83,6 @@ All TfL API calls use a `tflFetch()` wrapper with automatic retry on 429 rate-li
 
 - **Train positions are estimates** — TfL does not expose real-time GPS coordinates via the public API. Positions are interpolated between stops using `timeToStation` values from the arrivals feed. Elizabeth line and Overground trains are particularly approximate and shown with a visual indicator.
 - **Crowding data is historical** — the predicted crowding shown in the train modal is based on historical passenger flow averages by time of day, not live sensor data. Not available for all lines.
-- **Fingerprint sensor** — not relevant to this project but documented here for completeness.
 - **Line geometry** — track lines on the map connect stops with bezier curves; they do not follow actual tunnel geometry underground.
 
 ---
