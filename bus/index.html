@@ -1,0 +1,222 @@
+<!-- v2.9.3 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bus Arrivals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #0d0f14;
+      --surface:     #14171f;
+      --surface-2:   #1c2030;
+      --border:      rgba(255,255,255,0.07);
+      --text-primary:#f0f2f7;
+      --text-muted:  #6b7385;
+      --text-dim:    #3d4356;
+      --tfl-blue:    #003087;
+      --tfl-red:     #e21836;
+      --bus-red:     #e1251b;
+      --good:        #22c55e;
+      --warn:        #f59e0b;
+      --bad:         #ef4444;
+      --radius-md:   10px;
+      --radius-lg:   16px;
+      --font-main:   'DM Sans', system-ui, sans-serif;
+      --font-mono:   'DM Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100%; font-family: var(--font-main); background: var(--bg); color: var(--text-primary); }
+
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+      background-size: 40px 40px; pointer-events: none; z-index: 0;
+    }
+
+    .app-wrapper { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 0 16px 40px; }
+
+    .app-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 0 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .roundel { position: relative; flex-shrink: 0; width: 36px; height: 36px; }
+    .roundel-ring { position: absolute; inset: 0; border-radius: 50%; border: 5px solid var(--tfl-blue); }
+    .roundel-bar  { position: absolute; top: 50%; left: -2px; right: -2px; height: 10px; transform: translateY(-50%); background: var(--tfl-red); z-index: 1; }
+    .header-text h1 { font-size: 1.1rem; font-weight: 700; }
+    .header-text p  { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+    .header-spacer { flex: 1; }
+    .version-badge {
+      font-family: var(--font-mono); font-size: 0.6rem; font-weight: 500;
+      color: var(--text-dim); background: var(--surface-2);
+      border: 1px solid var(--border); padding: 2px 7px;
+      border-radius: 99px; letter-spacing: 0.04em; flex-shrink: 0;
+    }
+    .back-link {
+      font-size: 0.73rem; color: var(--text-muted); text-decoration: none;
+      padding: 5px 11px; border: 1px solid var(--border); border-radius: 6px;
+      transition: color .15s, border-color .15s; white-space: nowrap;
+    }
+    .back-link:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.2); }
+
+    .search-row { display: flex; gap: 10px; margin-bottom: 16px; }
+    #stop-search {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); color: var(--text-primary);
+      font-family: var(--font-main); font-size: 0.95rem; padding: 10px 14px;
+      outline: none; transition: border-color .15s;
+    }
+    #stop-search:focus { border-color: rgba(255,255,255,0.2); }
+    #stop-search::placeholder { color: var(--text-dim); }
+    #search-btn {
+      flex-shrink: 0; background: var(--bus-red); color: #fff;
+      border: none; border-radius: var(--radius-md);
+      font-family: var(--font-main); font-size: 0.9rem; font-weight: 600;
+      padding: 10px 20px; cursor: pointer; transition: opacity .15s;
+    }
+    #search-btn:hover { opacity: 0.85; }
+
+    .stop-selector {
+      display: none; flex-direction: column; gap: 6px;
+      margin-bottom: 16px;
+    }
+    .stop-selector.visible { display: flex; }
+    .stop-selector-label {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 2px;
+    }
+    .stop-btn {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 10px 14px;
+      cursor: pointer; transition: border-color .15s, background .15s;
+      text-align: left;
+    }
+    .stop-btn:hover { border-color: rgba(255,255,255,0.2); background: var(--surface-2); }
+    .stop-indicator {
+      flex-shrink: 0; width: 32px; height: 32px;
+      background: var(--bus-red); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; color: #fff;
+    }
+    .stop-info-name { font-size: 0.88rem; font-weight: 600; color: var(--text-primary); }
+    .stop-info-sub  { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+    .meta-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px; min-height: 20px;
+    }
+    #stop-name-display { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+    #last-updated { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim); }
+
+    #arrivals { display: flex; flex-direction: column; gap: 8px; }
+
+    .bus-row {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 12px 16px;
+      transition: border-color .12s;
+    }
+    .bus-row:hover { border-color: rgba(255,255,255,0.14); }
+
+    .route-badge {
+      flex-shrink: 0; min-width: 48px; height: 36px;
+      background: var(--bus-red); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 0.95rem; font-weight: 700;
+      color: #fff; padding: 0 6px;
+    }
+
+    .bus-dest {
+      flex: 1; min-width: 0;
+    }
+    .bus-dest-main {
+      font-size: 0.9rem; font-weight: 600; color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bus-dest-towards {
+      font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .bus-time {
+      flex-shrink: 0; font-family: var(--font-mono);
+      font-size: 0.82rem; font-weight: 700;
+      padding: 4px 10px; border-radius: 99px; border: 1px solid;
+    }
+    .bus-time.due  { color: var(--bad);  border-color: var(--bad);  background: rgba(239,68,68,0.08); }
+    .bus-time.soon { color: var(--warn); border-color: var(--warn); background: rgba(245,158,11,0.08); }
+    .bus-time.ok   { color: var(--good); border-color: var(--good); background: rgba(34,197,94,0.08); }
+
+    .state-msg { text-align: center; color: var(--text-muted); padding: 40px 16px; font-size: 0.9rem; }
+
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position:  400px 0; }
+    }
+    .skeleton-row {
+      height: 60px; border-radius: var(--radius-md);
+      background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 50%, var(--surface-2) 75%);
+      background-size: 400px 100%; animation: shimmer 1.4s infinite;
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+  <header class="app-header">
+    <div class="roundel"><div class="roundel-bar"></div><div class="roundel-ring"></div></div>
+    <div class="header-text"><h1>Bus Arrivals</h1><p>Live stop departures</p></div>
+    <div class="header-spacer"></div>
+    <span class="version-badge">v2.9.3</span>
+    <a href="../" class="back-link">← Status</a>
+  </header>
+
+  <div class="search-row">
+    <input type="text" id="stop-search" placeholder="Search for a bus stop or enter stop code…" autocomplete="off" />
+    <button id="search-btn">Search</button>
+  </div>
+
+  <div class="stop-selector" id="stop-selector">
+    <div class="stop-selector-label">Select a stop</div>
+  </div>
+
+  <div class="meta-row">
+    <span id="stop-name-display"></span>
+    <span id="last-updated"></span>
+  </div>
+
+  <div id="arrivals">
+    <div class="state-msg">Search for a bus stop above to see live arrivals.</div>
+  </div>
+</div>
+<script src="bus_app.js"></script>
+
+  <!-- Modal -->
+  <div id="modal-overlay" style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center" class="hidden">
+    <div style="position:relative;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 24px;width:min(420px,92vw);max-height:80vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.6)">
+      <button id="modal-close" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer">&times;</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+  <style>
+    #modal-overlay.hidden { display: none !important; }
+    .modal-route-badge { display:inline-flex;align-items:center;justify-content:center;background:#e1251b;border-radius:8px;font-family:var(--font-mono);font-size:1.2rem;font-weight:700;color:#fff;padding:4px 12px;margin-bottom:10px; }
+    .modal-dest { font-size:1.05rem;font-weight:700;color:var(--text-primary);margin-bottom:4px; }
+    .modal-sub  { font-size:0.72rem;color:var(--text-muted);margin-bottom:12px; }
+    .modal-section { font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin:14px 0 6px; }
+    .modal-loading { display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:0.85rem;padding:8px 0; }
+    .modal-spinner { width:18px;height:18px;border:2px solid var(--border);border-top-color:#e1251b;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0; }
+    .due  { color:#ef4444;border-color:#ef4444!important;background:rgba(239,68,68,0.08); }
+    .soon { color:#f59e0b;border-color:#f59e0b!important;background:rgba(245,158,11,0.08); }
+    .ok   { color:#22c55e;border-color:#22c55e!important;background:rgba(34,197,94,0.08); }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+</body>
+</html>

@@ -1,4 +1,4 @@
-# TfL Status — v2.7.0
+# TfL Status — v2.9.3
 
 A real-time Transport for London status and arrivals dashboard, built as a set of static HTML/CSS/JS pages. No backend, no build step — open the files directly in a browser or serve from any static host.
 
@@ -24,6 +24,28 @@ Live departure board for any TfL station.
 - Click any service to see current train location and next stops
 - Location inferred from arrival time sequence for Elizabeth line and Overground trains
 - Refreshes every 30 seconds automatically
+
+### `/bus/index.html` — Bus Stop Arrivals
+Live departure board for any London bus stop.
+
+- Search by stop name or the 5-digit stop code printed on the bus stop pole
+- Automatically resolves stop areas to individual stops (e.g. Stop A / Stop B on opposite sides of the road), letting you pick the exact one
+- Each row shows route number, destination, via info, and colour-coded time badge
+- Click any row to see the bus's estimated location and next stops
+- Auto-refreshes every 30 seconds
+
+### `/bus-map/index.html` — Live Bus Map
+Interactive map showing real-time bus positions across London.
+
+- Same dark Leaflet map with satellite toggle
+- Enter a route number (e.g. `25`, `N29`, `RV1`) and hit Go to show that route's buses
+- Route line and stop markers drawn on the map when a route is selected
+- Bus positions interpolated between stops using `timeToStation` (TfL does not provide live GPS for buses)
+- Without a filter, fetches buses from routes serving stops near the map centre — zoom in to zoom 13+ first
+- Bus dots are red circles with the route number inside; hover for destination and next stop time
+- Click any bus dot to see next 8 stops with times and estimated location
+- Refreshes every 20 seconds
+- Stop coordinates cached in memory per session to reduce API calls
 
 ### `/map/index.html` — Live Train Map
 Interactive map showing real-time train positions across the network.
@@ -55,6 +77,9 @@ Interactive map showing real-time train positions across the network.
 | Vehicle arrivals | `api.tfl.gov.uk/Vehicle/{id}/Arrivals` |
 | Crowding (predicted) | `api.tfl.gov.uk/StopPoint/{id}/Crowding/{lineId}` |
 | Station search | `api.tfl.gov.uk/StopPoint/Search` |
+| Bus stop arrivals | `api.tfl.gov.uk/StopPoint/{id}/Arrivals` |
+| Bus route stops (with coords) | `api.tfl.gov.uk/Line/{route}/StopPoints` |
+| Bus route arrivals | `api.tfl.gov.uk/Line/{route}/Arrivals` |
 | Map tiles (default) | CARTO Dark Matter (OpenStreetMap data) |
 | Map tiles (satellite) | Esri World Imagery |
 
@@ -72,9 +97,15 @@ All TfL API calls use a `tflFetch()` wrapper with automatic retry on 429 rate-li
 ├── arrivals_app.js     — Arrivals + train location logic (shared by arrivals and map)
 ├── arrivals/
 │   └── index.html      — Station arrivals page
-└── map/
-    ├── index.html      — Live train map page
-    └── map_app.js      — Map logic (Leaflet, train interpolation, modals)
+├── map/
+│   ├── index.html      — Live train map page
+│   └── map_app.js      — Map logic (Leaflet, train interpolation, modals)
+├── bus/
+│   ├── index.html      — Bus stop arrivals page
+│   └── bus_app.js      — Bus stop search and arrivals logic
+└── bus-map/
+    ├── index.html      — Live bus map page
+    └── bus_map_app.js  — Bus map logic (route lines, position interpolation)
 ```
 
 ---
@@ -103,7 +134,6 @@ Then open `http://localhost:8080`.
 
 - **Train positions are estimates** — TfL does not expose real-time GPS coordinates via the public API. Positions are interpolated between stops using `timeToStation` values from the arrivals feed. Elizabeth line and Overground trains are particularly approximate and shown with a visual indicator.
 - **Crowding data is historical** — the predicted crowding shown in the train modal is based on historical passenger flow averages by time of day, not live sensor data. Not available for all lines.
-- **Fingerprint sensor** — not relevant to this project but documented here for completeness.
 - **Line geometry** — track lines on the map connect stops with bezier curves; they do not follow actual tunnel geometry underground.
 
 ---

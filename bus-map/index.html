@@ -1,0 +1,199 @@
+<!-- v2.9.3 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Bus Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root {
+      --bg:          #0d0f14;
+      --surface:     #14171f;
+      --surface-2:   #1c2030;
+      --border:      rgba(255,255,255,0.07);
+      --text-primary:#f0f2f7;
+      --text-muted:  #6b7385;
+      --text-dim:    #3d4356;
+      --tfl-blue:    #003087;
+      --tfl-red:     #e21836;
+      --bus-red:     #e1251b;
+      --font-main:   'DM Sans', system-ui, sans-serif;
+      --font-mono:   'DM Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; overflow: hidden; background: var(--bg); color: var(--text-primary); font-family: var(--font-main); }
+
+    .header {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
+      display: flex; align-items: center; gap: 12px;
+      height: 52px; padding: 0 16px;
+      background: rgba(13,15,20,0.92); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .roundel { position: relative; flex-shrink: 0; width: 30px; height: 30px; }
+    .roundel-ring { position: absolute; inset: 0; border-radius: 50%; border: 4px solid var(--tfl-blue); }
+    .roundel-bar  { position: absolute; top: 50%; left: -2px; right: -2px; height: 8px; transform: translateY(-50%); background: var(--tfl-red); z-index: 1; }
+    .htext h1 { font-size: 0.95rem; font-weight: 700; line-height: 1.1; }
+    .htext p  { font-size: 0.63rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .spacer { flex: 1; }
+    #status-text { font-family: var(--font-mono); font-size: 0.63rem; color: var(--text-dim); white-space: nowrap; }
+    .version-badge { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-dim); background: var(--surface-2); border: 1px solid var(--border); padding: 2px 7px; border-radius: 99px; }
+    .back-link { font-size: 0.73rem; color: var(--text-muted); text-decoration: none; padding: 5px 11px; border: 1px solid var(--border); border-radius: 6px; transition: color .15s, border-color .15s; white-space: nowrap; }
+    .back-link:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.2); }
+
+    #map { position: absolute; top: 52px; left: 0; right: 0; bottom: 0; }
+
+    .leaflet-control-attribution { background: rgba(13,15,20,0.8) !important; color: var(--text-dim) !important; font-size: 0.6rem !important; }
+    .leaflet-control-attribution a { color: var(--text-muted) !important; }
+    .leaflet-control-zoom a { background: rgba(13,15,20,0.9) !important; color: var(--text-muted) !important; border-color: var(--border) !important; }
+    .leaflet-control-zoom a:hover { color: var(--text-primary) !important; }
+
+    .map-toggle {
+      position: absolute; top: 68px; right: 16px; z-index: 999;
+      display: flex; background: rgba(13,15,20,0.92); backdrop-filter: blur(10px);
+      border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    }
+    .map-toggle-btn { padding: 6px 14px; font-family: var(--font-main); font-size: 0.72rem; font-weight: 600; color: var(--text-muted); background: none; border: none; cursor: pointer; transition: color .15s, background .15s; }
+    .map-toggle-btn.active { color: var(--text-primary); background: rgba(255,255,255,0.08); }
+    .map-toggle-btn + .map-toggle-btn { border-left: 1px solid var(--border); }
+
+    .route-filter {
+      position: absolute; top: 68px; left: 16px; z-index: 999;
+      background: rgba(13,15,20,0.92); backdrop-filter: blur(10px);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+      width: 200px;
+    }
+    .route-filter-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+    .route-input-row { display: flex; gap: 6px; }
+    #route-input {
+      flex: 1; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-primary);
+      font-family: var(--font-mono); font-size: 0.82rem;
+      padding: 5px 8px; outline: none;
+      transition: border-color .15s;
+    }
+    #route-input:focus { border-color: rgba(255,255,255,0.2); }
+    #route-input::placeholder { color: var(--text-dim); }
+    #route-btn {
+      flex-shrink: 0; background: var(--bus-red); color: #fff;
+      border: none; border-radius: 6px; font-family: var(--font-main);
+      font-size: 0.75rem; font-weight: 700; padding: 5px 10px;
+      cursor: pointer;
+    }
+    #route-btn:hover { opacity: 0.85; }
+    .active-route-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--bus-red); border-radius: 6px;
+      padding: 4px 8px; font-size: 0.75rem; font-weight: 700; color: #fff;
+    }
+    .clear-route { background: none; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 0.9rem; padding: 0; line-height: 1; }
+    .clear-route:hover { color: #fff; }
+    #route-status { font-size: 0.68rem; color: var(--text-muted); }
+
+    #tooltip {
+      position: fixed; z-index: 1500; pointer-events: none;
+      background: rgba(13,15,20,0.96); backdrop-filter: blur(8px);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; font-size: 0.78rem; display: none; max-width: 220px;
+    }
+    #tooltip strong { display: block; color: var(--text-primary); margin-bottom: 2px; }
+    #tooltip .tt-sub { display: block; color: var(--text-muted); font-size: 0.7rem; }
+
+    #modal-overlay {
+      position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #modal-overlay.hidden { display: none; }
+    .modal-box {
+      position: relative; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 16px;
+      padding: 22px 24px; width: min(400px, 92vw);
+      max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    }
+    .modal-close { position: absolute; top: 14px; right: 16px; background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-route-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--bus-red); border-radius: 8px;
+      font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700;
+      color: #fff; padding: 4px 12px; margin-bottom: 10px;
+    }
+    .modal-dest { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .modal-sub  { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 16px; }
+    .modal-section { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin: 14px 0 6px; }
+    .modal-stops { display: flex; flex-direction: column; }
+    .modal-stop-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .modal-stop-row:last-child { border-bottom: none; }
+    .modal-stop-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--text-dim); background: var(--bg); }
+    .modal-stop-dot.next { border-color: var(--bus-red); background: rgba(225,37,27,0.15); }
+    .modal-stop-name { flex: 1; color: var(--text-primary); }
+    .modal-stop-time { font-family: var(--font-mono); font-size: 0.75rem; padding: 2px 8px; border-radius: 99px; border: 1px solid; }
+    .modal-stop-time.due  { color: var(--bad);  border-color: var(--bad);  background: rgba(239,68,68,0.08); }
+    .modal-stop-time.soon { color: var(--warn); border-color: var(--warn); background: rgba(245,158,11,0.08); }
+    .modal-stop-time.ok   { color: var(--good); border-color: var(--good); background: rgba(34,197,94,0.08); }
+    .modal-loading { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 0.85rem; }
+    .modal-spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--bus-red); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+
+    #loading {
+      position: absolute; inset: 52px 0 0 0; z-index: 1100;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; background: var(--bg);
+    }
+    #loading p { font-size: 0.8rem; color: var(--text-muted); }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--bus-red); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="roundel"><div class="roundel-bar"></div><div class="roundel-ring"></div></div>
+  <div class="htext"><h1>Live Bus Map</h1><p>Real-time positions · London</p></div>
+  <div class="spacer"></div>
+  <span id="status-text">Loading…</span>
+  <span class="version-badge">v2.9.3</span>
+  <a href="../" class="back-link">← Status</a>
+</div>
+
+<div id="map"></div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Fetching bus positions…</p>
+</div>
+
+<div class="map-toggle">
+  <button class="map-toggle-btn active" id="btn-map">🗺 Map</button>
+  <button class="map-toggle-btn" id="btn-satellite">🛰 Satellite</button>
+</div>
+
+<div class="route-filter">
+  <div class="route-filter-label">Filter by route</div>
+  <div class="route-input-row">
+    <input type="text" id="route-input" placeholder="e.g. 25" maxlength="6" />
+    <button id="route-btn">Go</button>
+  </div>
+  <div id="active-route-display"></div>
+  <div id="route-status"></div>
+</div>
+
+<div id="tooltip"></div>
+
+<div id="modal-overlay" class="hidden">
+  <div class="modal-box">
+    <button class="modal-close" id="modal-close">&times;</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="bus_map_app.js"></script>
+</body>
+</html>

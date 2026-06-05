@@ -1,4 +1,4 @@
-/* v2.7.0 */
+/* v2.9.3 */
 document.addEventListener("DOMContentLoaded", function () {
   const tubeApiUrl          = `https://api.tfl.gov.uk/line/mode/tube/status`;
   const elizabethLineApiUrl = 'https://api.tfl.gov.uk/line/elizabeth/status';

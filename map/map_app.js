@@ -1,4 +1,4 @@
-/* v2.7.0 */
+/* v2.9.3 */
 const LINE_DEFS = [
   { id: 'bakerloo',          name: 'Bakerloo',           color: '#B36305', osmRef: 'London Underground Bakerloo line' },
   { id: 'central',           name: 'Central',            color: '#E32017', osmRef: 'London Underground Central line' },
