@@ -1,4 +1,4 @@
-<!-- v2.6.0 -->
+<!-- v2.7.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -256,6 +256,28 @@
       letter-spacing: 0.04em;
       flex-shrink: 0;
     }
+    .crowd-banner {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 16px;
+      margin-bottom: 4px;
+    }
+    .crowd-banner-label {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted);
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .crowd-bar-track { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 99px; overflow: hidden; }
+    .crowd-bar-fill  { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+    .crowd-bar-fill.crowd-low  { background: #22c55e; }
+    .crowd-bar-fill.crowd-mid  { background: #f59e0b; }
+    .crowd-bar-fill.crowd-high { background: #ef4444; }
+    .crowd-label { font-size: 0.75rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+    .crowd-label.crowd-low  { color: #22c55e; }
+    .crowd-label.crowd-mid  { color: #f59e0b; }
+    .crowd-label.crowd-high { color: #ef4444; }
   </style>
 </head>
 <body>
@@ -269,7 +291,7 @@
         <h1>Station Arrivals</h1>
         <p>Live departure board</p>
       </div>
-      <span class="version-badge">v2.6.0</span>
+      <span class="version-badge">v2.7.0</span>
     </header>
 
     <div class="search-row">

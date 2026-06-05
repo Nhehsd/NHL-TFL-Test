@@ -1,4 +1,4 @@
-/* v2.6.0 */
+/* v2.7.0 */
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 async function tflFetch(url, retries = 3) {
@@ -236,6 +236,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
+      const upcoming = data.filter(s => s.timeToStation > 30);
+      const nextNaptan = upcoming[0]?.naptanId || null;
+      const crowdVal = nextNaptan ? await fetchCrowding(nextNaptan) : null;
+
       let html = '';
       if (loc) {
         html += `<h3>Train location</h3><p>${loc}</p>`;
@@ -244,21 +248,35 @@ document.addEventListener('DOMContentLoaded', () => {
             ⓘ Estimated from arrival times — Elizabeth line trains don't broadcast live position data.
           </p>`;
         }
-        const upcoming = data.filter(s => s.timeToStation > 30).slice(0, 5);
-        if (upcoming.length) {
-          html += `<h3 style="margin-top:16px">Next stops</h3><ul style="list-style:none;padding:0;margin:6px 0 0;display:flex;flex-direction:column;gap:5px">`;
-          for (const s of upcoming) {
-            const m = Math.round(s.timeToStation / 60);
-            const label = m <= 1 ? '1 min' : `${m} min`;
-            html += `<li style="display:flex;justify-content:space-between;font-size:0.88rem">
-              <span>${cleanStationName(s.stationName)}</span>
-              <span style="font-family:var(--font-mono);color:var(--text-muted)">${label}</span>
-            </li>`;
-          }
-          html += '</ul>';
-        }
       } else {
         html = `<p style="color:var(--text-muted)">Location not available for this train.</p>`;
+      }
+
+      if (crowdVal !== null) {
+        const pct   = Math.min(100, Math.round(crowdVal * 100));
+        const cls   = crowdVal < 0.4 ? 'crowd-low' : crowdVal < 0.7 ? 'crowd-mid' : 'crowd-high';
+        const label = crowdVal < 0.4 ? 'Quiet' : crowdVal < 0.7 ? 'Busy' : 'Very busy';
+        const nextName = cleanStationName(upcoming[0]?.stationName || '');
+        html += `<h3 style="margin-top:16px">Live crowding${nextName ? ` at ${nextName}` : ''}</h3>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+            <div class="crowd-bar-track" style="flex:1">
+              <div class="crowd-bar-fill ${cls}" style="width:${pct}%"></div>
+            </div>
+            <span class="crowd-label ${cls}">${label}</span>
+          </div>`;
+      }
+
+      if (upcoming.length) {
+        html += `<h3 style="margin-top:16px">Next stops</h3><ul style="list-style:none;padding:0;margin:6px 0 0;display:flex;flex-direction:column;gap:5px">`;
+        for (const s of upcoming.slice(0, 5)) {
+          const m = Math.round(s.timeToStation / 60);
+          const label = m <= 1 ? '1 min' : `${m} min`;
+          html += `<li style="display:flex;justify-content:space-between;font-size:0.88rem">
+            <span>${cleanStationName(s.stationName)}</span>
+            <span style="font-family:var(--font-mono);color:var(--text-muted)">${label}</span>
+          </li>`;
+        }
+        html += '</ul>';
       }
 
       modalBody.innerHTML = html;
@@ -278,8 +296,14 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadArrivals() {
     showSkeletons();
     try {
-      const arr = await fetchArrivals(currentStopId);
-      renderArrivals(arr);
+      const [arr, crowdVal] = await Promise.allSettled([
+        fetchArrivals(currentStopId),
+        fetchCrowding(currentStopId),
+      ]);
+      renderArrivals(
+        arr.status === 'fulfilled' ? arr.value : [],
+        crowdVal.status === 'fulfilled' ? crowdVal.value : null
+      );
     } catch {
       arrivalsEl.innerHTML = '<div class="state-msg">Unable to load arrivals. Check your connection.</div>';
     }
@@ -348,13 +372,39 @@ async function fetchVehicleArrivals(id) {
 }
 
 
-function renderArrivals(arrivals) {
+async function fetchCrowding(naptanId) {
+  try {
+    const json = await tflFetch(`https://api.tfl.gov.uk/crowding/${naptanId}/Live`);
+    if (!json?.dataAvailable) return null;
+    return json.percentageOfBaseline ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function renderArrivals(arrivals, crowdValue = null) {
   const container = document.getElementById('arrivals');
   container.innerHTML = '';
 
   if (!arrivals.length) {
     container.innerHTML = '<div class="state-msg">No upcoming services found for this station.</div>';
     return;
+  }
+
+  if (crowdValue !== null) {
+    const pct   = Math.min(100, Math.round(crowdValue * 100));
+    const cls   = crowdValue < 0.4 ? 'crowd-low' : crowdValue < 0.7 ? 'crowd-mid' : 'crowd-high';
+    const label = crowdValue < 0.4 ? 'Quiet' : crowdValue < 0.7 ? 'Busy' : 'Very busy';
+    const crowdEl = document.createElement('div');
+    crowdEl.className = 'crowd-banner';
+    crowdEl.innerHTML = `
+      <div class="crowd-banner-label">Live crowding</div>
+      <div class="crowd-bar-track">
+        <div class="crowd-bar-fill ${cls}" style="width:${pct}%"></div>
+      </div>
+      <span class="crowd-label ${cls}">${label}</span>
+    `;
+    container.appendChild(crowdEl);
   }
 
   const byPlatform = {};

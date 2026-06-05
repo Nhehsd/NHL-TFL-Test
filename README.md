@@ -1,4 +1,4 @@
-# TfL Status — v2.6.0
+# TfL Status — v2.7.0
 
 A real-time Transport for London status and arrivals dashboard, built as a set of static HTML/CSS/JS pages. No backend, no build step — open the files directly in a browser or serve from any static host.
 
@@ -79,10 +79,31 @@ All TfL API calls use a `tflFetch()` wrapper with automatic retry on 429 rate-li
 
 ---
 
+## Running locally
+
+No build step required. Just open any of the HTML files in a browser, or serve the folder with any static server:
+
+```bash
+npx serve .
+```
+
+or with Python:
+
+```bash
+python -m http.server 8080
+```
+
+Then open `http://localhost:8080`.
+
+> **Note:** The TfL API does not require an API key for public endpoints but is rate-limited. Opening the map page fires approximately 19 sequential requests on load (one per line, spaced 300ms apart). Refreshing rapidly may trigger 429 responses — the app will retry automatically.
+
+---
+
 ## Known limitations
 
 - **Train positions are estimates** — TfL does not expose real-time GPS coordinates via the public API. Positions are interpolated between stops using `timeToStation` values from the arrivals feed. Elizabeth line and Overground trains are particularly approximate and shown with a visual indicator.
 - **Crowding data is historical** — the predicted crowding shown in the train modal is based on historical passenger flow averages by time of day, not live sensor data. Not available for all lines.
+- **Fingerprint sensor** — not relevant to this project but documented here for completeness.
 - **Line geometry** — track lines on the map connect stops with bezier curves; they do not follow actual tunnel geometry underground.
 
 ---
