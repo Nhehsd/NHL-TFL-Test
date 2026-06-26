@@ -1,4 +1,4 @@
-<!-- v2.9.3 -->
+<!-- v3.0.6 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,7 +24,7 @@
           <p class="header-subtitle">Live line status</p>
         </div>
         <div class="last-updated" id="last-updated">Updating…</div>
-        <span class="version-badge">v2.9.3</span>
+        <span class="version-badge">v3.0.6</span>
       </div>
     </header>
 
@@ -34,7 +34,9 @@
           <span class="panel-label">Tube &amp; Elizabeth line</span>
           <span class="panel-count" id="tube-count"></span>
         </div>
-        <div class="lines-list others-table"></div>
+        <div class="lines-list-scroll-wrap">
+          <div class="lines-list others-table"></div>
+        </div>
       </section>
 
       <section class="panel panel-right">
@@ -42,9 +44,20 @@
           <span class="panel-label">Overground</span>
           <span class="panel-count" id="og-count"></span>
         </div>
-        <div class="lines-list overground-table"></div>
+        <div class="lines-list-scroll-wrap">
+          <div class="lines-list overground-table"></div>
+        </div>
       </section>
     </main>
+
+    <footer class="bus-ticker-bar">
+      <div class="bus-ticker-label">🚌 Kent Gardens</div>
+      <div class="bus-ticker-track">
+        <div class="bus-ticker-inner" id="bus-ticker-inner">
+          <span class="bus-ticker-loading">Loading bus arrivals…</span>
+        </div>
+      </div>
+    </footer>
   </div>
 
   <script src="app.js"></script>

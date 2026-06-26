@@ -1,4 +1,4 @@
-/* v2.9.3 */
+/* v3.0.6 */
 /* ===== Design Tokens ===== */
 :root {
   --bg:           #0d0f14;
@@ -115,10 +115,10 @@ h1 { font-size: clamp(14px, 2vh, 36px); font-weight: 700; letter-spacing: -0.01e
   min-height: 0;
 }
 
-.panel-left  { flex: 2; transition: flex 0.6s ease; }
-.panel-right { flex: 1; transition: flex 0.6s ease; }
+.panel-left  { flex: 2; transition: flex 0.6s ease; min-width: 0; }
+.panel-right { flex: 1; transition: flex 0.6s ease; min-width: 280px; }
 .panel-left.expanded  { flex: 3.5; }
-.panel-right.compact  { flex: 0.8; }
+.panel-right.compact  { flex: 0.8; min-width: 220px; }
 
 .panel-header {
   flex-shrink: 0;
@@ -133,31 +133,81 @@ h1 { font-size: clamp(14px, 2vh, 36px); font-weight: 700; letter-spacing: -0.01e
 .panel-label { font-size: clamp(8px, 1vh, 18px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
 .panel-count { font-family: var(--font-mono); font-size: clamp(7px, 0.85vh, 15px); color: var(--text-dim); background: var(--surface-2); border: 1px solid var(--border); padding: 1px 0.6vw; border-radius: 99px; }
 
-/* ===== Lines list ===== */
+/* ===== Lines list — left panel scrolls vertically and loops ===== */
 .lines-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5vw;
+  gap: 0.4vw;
+}
+
+.panel-left .lines-list-scroll-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+@keyframes scroll-up {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(var(--scroll-dist, -50%)); }
+}
+
+.panel-left .lines-list {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  animation: scroll-up linear infinite;
+}
+
+.panel-right .lines-list-scroll-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-right .lines-list {
   flex: 1;
   display: flex;
   flex-direction: column;
   padding: 0.5vw;
   gap: 0.4vw;
-  overflow: hidden;
   min-height: 0;
 }
 
-/* ===== Card — single horizontal row, fixed equal height share ===== */
-.line-container {
-  flex: 1 1 0;
-  min-height: 0;
+/* ===== Card — left panel scrolls, so cards have natural height ===== */
+.panel-left .line-container {
+  flex-shrink: 0;
   display: flex;
-  flex-direction: row;      /* everything side-by-side in ONE row */
+  flex-direction: row;
   align-items: center;
   gap: 0.8vw;
-  padding: clamp(4px, 0.7vh, 12px) 1vw;
+  padding: clamp(6px, 1vh, 14px) 1vw;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--surface-2);
   overflow: hidden;
   transition: border-color var(--transition);
+}
+
+.panel-right .line-container {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.8vw;
+  padding: clamp(4px, 0.8vh, 12px) 1vw;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  overflow: hidden;
+  transition: border-color var(--transition);
+}
+
+.panel-right .line-container.has-delay {
+  flex: 2 1 0;
 }
 
 .line-container:hover { border-color: var(--border-hover); }
@@ -193,16 +243,21 @@ h1 { font-size: clamp(14px, 2vh, 36px); font-weight: 700; letter-spacing: -0.01e
   line-height: 1.2;
 }
 
-/* Reason: single truncated line in muted colour, sized relative to the name */
-.line-body .reason {
+/* Left panel reason: fully wrapped, no clamp — scroll handles overflow */
+.panel-left .line-body .reason {
   font-size: clamp(9px, 0.9vw, 18px);
   font-weight: 400;
   white-space: normal;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  line-height: 1.3;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* Right panel reason: fully wrapped */
+.panel-right .line-body .reason {
+  font-size: clamp(9px, 0.9vw, 18px);
+  font-weight: 400;
+  white-space: normal;
+  line-height: 1.4;
   color: var(--text-muted);
 }
 
@@ -238,4 +293,129 @@ h1 { font-size: clamp(14px, 2vh, 36px); font-weight: 700; letter-spacing: -0.01e
   background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 50%, var(--surface-2) 75%);
   background-size: 400px 100%;
   animation: shimmer 1.4s infinite;
+}
+
+/* ===== Bus ticker bar ===== */
+.bus-ticker-bar {
+  flex-shrink: 0;
+  height: clamp(44px, 6vh, 72px);
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+  padding: 0 1vw;
+  position: relative;
+}
+
+.bus-ticker-label {
+  flex-shrink: 0;
+  font-size: clamp(10px, 1.2vh, 18px);
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding-right: 0.8vw;
+  border-right: 1px solid var(--border);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bus-ticker-track {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.bus-ticker-inner {
+  display: flex;
+  align-items: center;
+  gap: 2.5vw;
+  white-space: nowrap;
+  will-change: transform;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+
+.bus-ticker-inner.scrolling {
+  animation: ticker-scroll linear infinite;
+}
+
+.bus-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5vw;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.bus-ticker-route {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e1251b;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: clamp(10px, 1.4vh, 22px);
+  padding: 3px clamp(6px, 0.6vw, 12px);
+  border-radius: 4px;
+  min-width: 2.2em;
+  line-height: 1;
+}
+
+.bus-ticker-dest {
+  font-size: clamp(11px, 1.4vh, 22px);
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.bus-ticker-stop {
+  display: none;
+}
+
+.bus-ticker-time {
+  font-family: var(--font-mono);
+  font-size: clamp(10px, 1.3vh, 20px);
+  font-weight: 700;
+  padding: 3px clamp(5px, 0.5vw, 10px);
+  border-radius: 99px;
+  border: 1px solid;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.bus-ticker-time.due  { color: var(--bad);  border-color: var(--bad);  background: rgba(239,68,68,0.1); }
+.bus-ticker-time.soon { color: var(--warn); border-color: var(--warn); background: rgba(245,158,11,0.1); }
+.bus-ticker-time.ok   { color: var(--good); border-color: var(--good); background: rgba(34,197,94,0.1); }
+
+.bus-ticker-sep {
+  color: var(--text-dim);
+  font-size: clamp(10px, 1.2vh, 18px);
+  padding: 0 0.3vw;
+}
+
+.bus-ticker-loading {
+  font-size: clamp(9px, 1vh, 15px);
+  color: var(--text-dim);
+}
+
+/* ===== Right panel scroll ===== */
+.panel-right .panel {
+  overflow: hidden;
 }

@@ -1,4 +1,4 @@
-/* v2.9.3 */
+/* v3.0.6 */
 document.addEventListener("DOMContentLoaded", function () {
   const tubeApiUrl          = `https://api.tfl.gov.uk/line/mode/tube/status`;
   const elizabethLineApiUrl = 'https://api.tfl.gov.uk/line/elizabeth/status';
@@ -77,35 +77,120 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelector('.panel-left').classList.toggle('expanded', !ogHasDelays);
     document.querySelector('.panel-right').classList.toggle('compact', !ogHasDelays);
 
+    document.querySelectorAll('.panel-right .line-container').forEach(card => {
+      const hasDelay = card.querySelector('.reason') !== null;
+      card.classList.toggle('has-delay', hasDelay);
+    });
+
     const now = new Date();
     document.getElementById('last-updated').textContent =
       `Updated ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
 
-    requestAnimationFrame(() => adjustReasonLines());
-  }
-
-  function adjustReasonLines() {
-    document.querySelectorAll('.line-container').forEach(card => {
-      const reason = card.querySelector('.reason');
-      if (!reason) return;
-
-      const cardH    = card.clientHeight;
-      const nameEl   = card.querySelector('strong');
-      const nameH    = nameEl ? nameEl.offsetHeight : 0;
-      const gap      = parseFloat(getComputedStyle(card.querySelector('.line-body')).gap) || 2;
-      const bodyStyle = getComputedStyle(card);
-      const padV     = parseFloat(bodyStyle.paddingTop || 0) + parseFloat(bodyStyle.paddingBottom || 0);
-
-      const reasonLineH = reason.offsetHeight / (parseInt(getComputedStyle(reason).webkitLineClamp) || 1);
-      const available  = cardH - padV - nameH - gap;
-      const lines = Math.max(1, Math.min(2, Math.floor(available / (reasonLineH || 16))));
-
-      reason.style.webkitLineClamp = lines;
-      reason.style.overflow = 'hidden';
+    requestAnimationFrame(() => {
+      adjustReasonLines();
+      setupLeftPanelScroll();
+      startBusTicker();
     });
   }
 
-  window.addEventListener('resize', adjustReasonLines);
+  function setupPanelScroll(panelSelector) {
+    const wrap = document.querySelector(`${panelSelector} .lines-list-scroll-wrap`);
+    const list = document.querySelector(`${panelSelector} .lines-list`);
+    if (!wrap || !list) return;
+
+    list.style.animation = 'none';
+
+    const original = list.innerHTML;
+    list.innerHTML = original + original;
+
+    requestAnimationFrame(() => {
+      const totalH   = list.scrollHeight / 2;
+      const wrapH    = wrap.clientHeight;
+      const pxPerSec = 40;
+      const duration = totalH / pxPerSec;
+
+      list.style.setProperty('--scroll-dist', `-${totalH}px`);
+      list.style.animationDuration       = `${duration}s`;
+      list.style.animationName           = 'scroll-up';
+      list.style.animationTimingFunction = 'linear';
+      list.style.animationIterationCount = 'infinite';
+    });
+  }
+
+  function setupLeftPanelScroll() {
+    setupPanelScroll('.panel-left');
+  }
+
+  function adjustReasonLines() {
+  }
+
+  window.addEventListener('resize', () => {
+    adjustReasonLines();
+    setupPanelScroll('.panel-left');
+  });
+
+  async function startBusTicker() {
+    await loadBusTicker();
+    setInterval(loadBusTicker, 30000);
+  }
+
+  async function loadBusTicker() {
+    const STOPS = [
+      { id: '490008655E', label: 'SA → Ealing Broadway' },
+      { id: '490008655W', label: 'SX → Greenford / Willesden' },
+    ];
+
+    try {
+      const results = await Promise.all(
+        STOPS.map(s =>
+          fetch(`https://api.tfl.gov.uk/StopPoint/${s.id}/Arrivals?t=${Date.now()}`, { cache: 'no-store' })
+            .then(r => r.json())
+            .then(arr => Array.isArray(arr) ? arr.map(a => ({ ...a, _stopLabel: s.label })) : [])
+            .catch(() => [])
+        )
+      );
+
+      const all = results.flat()
+        .filter(a => ['e10','297'].includes((a.lineId || '').toLowerCase()))
+        .sort((a, b) => a.timeToStation - b.timeToStation)
+        .slice(0, 12);
+
+      if (!all.length) {
+        document.getElementById('bus-ticker-inner').innerHTML =
+          '<span class="bus-ticker-loading">No buses due</span>';
+        return;
+      }
+
+      const items = all.map(a => {
+        const secs  = a.timeToStation;
+        const mins  = Math.round(secs / 60);
+        const label = secs < 30 ? 'Due' : mins <= 1 ? '1 min' : `${mins} min`;
+        const cls   = secs < 30 ? 'due' : mins <= 2 ? 'soon' : 'ok';
+        return `<span class="bus-ticker-item">
+          <span class="bus-ticker-route">${(a.lineName || a.lineId || '').toUpperCase()}</span>
+          <span class="bus-ticker-dest">${a.destinationName || ''}</span>
+          <span class="bus-ticker-time ${cls}">${label}</span>
+        </span>
+        <span class="bus-ticker-sep">·</span>`;
+      }).join('');
+
+      const inner = document.getElementById('bus-ticker-inner');
+      inner.style.animation = 'none';
+      inner.innerHTML = items + items;
+
+      requestAnimationFrame(() => {
+        const totalW   = inner.offsetWidth / 2;
+        const duration = Math.max(20, totalW / 80);
+        inner.style.animationDuration       = `${duration}s`;
+        inner.style.animationTimingFunction  = 'linear';
+        inner.style.animationIterationCount  = 'infinite';
+        inner.style.animationName            = 'ticker-scroll';
+      });
+
+    } catch (e) {
+      console.warn('Bus ticker failed:', e);
+    }
+  }
 
   function getStatusBadgeClass(severity) {
     switch (severity) {
