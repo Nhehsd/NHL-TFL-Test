@@ -1,4 +1,4 @@
-/* v3.0.6 */
+/* v3.0.8 */
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 async function tflFetch(url, retries = 3) {

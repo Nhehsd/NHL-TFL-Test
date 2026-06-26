@@ -1,4 +1,4 @@
-# TfL Status — v3.0.6
+# TfL Status — v3.0.8
 
 A real-time Transport for London status and arrivals dashboard, built as a set of static HTML/CSS/JS pages. No backend, no build step — open the files directly in a browser or serve from any static host.
 

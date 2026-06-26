@@ -1,4 +1,4 @@
-/* v3.0.6 */
+/* v3.0.8 */
 /* ===== Design Tokens ===== */
 :root {
   --bg:           #0d0f14;
@@ -413,6 +413,57 @@ h1 { font-size: clamp(14px, 2vh, 36px); font-weight: 700; letter-spacing: -0.01e
 .bus-ticker-loading {
   font-size: clamp(9px, 1vh, 15px);
   color: var(--text-dim);
+}
+
+/* Pinned next bus */
+.bus-ticker-next {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5vw;
+  white-space: nowrap;
+}
+
+.bus-ticker-next .bus-ticker-route {
+  font-size: clamp(11px, 1.5vh, 24px);
+  padding: 3px clamp(7px, 0.7vw, 14px);
+}
+
+.bus-ticker-next .bus-ticker-dest {
+  font-size: clamp(12px, 1.5vh, 24px);
+  font-weight: 700;
+}
+
+.bus-ticker-next .bus-ticker-time {
+  font-size: clamp(11px, 1.4vh, 22px);
+  padding: 3px clamp(6px, 0.6vw, 12px);
+}
+
+.bus-ticker-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 60%;
+  background: var(--border);
+  margin: 0 0.8vw;
+}
+
+.bus-ticker-pinned-dir {
+  flex-shrink: 0;
+  font-size: clamp(8px, 1vh, 14px);
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  margin-right: 0.3vw;
+}
+
+.bus-ticker-pinned-sep {
+  flex-shrink: 0;
+  width: 1px;
+  height: 55%;
+  background: var(--border);
+  margin: 0 0.8vw;
 }
 
 /* ===== Right panel scroll ===== */

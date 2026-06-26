@@ -1,4 +1,4 @@
-/* v3.0.6 */
+/* v3.0.8 */
 document.addEventListener("DOMContentLoaded", function () {
   const tubeApiUrl          = `https://api.tfl.gov.uk/line/mode/tube/status`;
   const elizabethLineApiUrl = 'https://api.tfl.gov.uk/line/elizabeth/status';
@@ -145,7 +145,7 @@ document.addEventListener("DOMContentLoaded", function () {
         STOPS.map(s =>
           fetch(`https://api.tfl.gov.uk/StopPoint/${s.id}/Arrivals?t=${Date.now()}`, { cache: 'no-store' })
             .then(r => r.json())
-            .then(arr => Array.isArray(arr) ? arr.map(a => ({ ...a, _stopLabel: s.label })) : [])
+            .then(arr => Array.isArray(arr) ? arr.map(a => ({ ...a, _stopLabel: s.label, _stopId: s.id })) : [])
             .catch(() => [])
         )
       );
@@ -161,22 +161,53 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      const items = all.map(a => {
+      const makeItem = (a) => {
         const secs  = a.timeToStation;
         const mins  = Math.round(secs / 60);
         const label = secs < 30 ? 'Due' : mins <= 1 ? '1 min' : `${mins} min`;
         const cls   = secs < 30 ? 'due' : mins <= 2 ? 'soon' : 'ok';
-        return `<span class="bus-ticker-item">
-          <span class="bus-ticker-route">${(a.lineName || a.lineId || '').toUpperCase()}</span>
-          <span class="bus-ticker-dest">${a.destinationName || ''}</span>
-          <span class="bus-ticker-time ${cls}">${label}</span>
-        </span>
-        <span class="bus-ticker-sep">·</span>`;
-      }).join('');
+        return { a, label, cls };
+      };
+
+      const allMapped = all.map(makeItem);
+
+      const firstSA = allMapped.find(({ a }) => a._stopId === '490008655E');
+      const firstSX = allMapped.find(({ a }) => a._stopId === '490008655W');
+
+      const makePinnedHTML = ({ a, label, cls }) => `
+        <span class="bus-ticker-route">${(a.lineName || a.lineId || '').toUpperCase()}</span>
+        <span class="bus-ticker-dest">${a.destinationName || ''}</span>
+        <span class="bus-ticker-time ${cls}">${label}</span>
+      `;
+
+      const nextEl = document.getElementById('bus-ticker-next');
+      let pinnedHTML = '';
+      if (firstSA) {
+        pinnedHTML += `<span class="bus-ticker-pinned-dir">→ Ealing Broadway</span>` + makePinnedHTML(firstSA);
+      }
+      if (firstSA && firstSX) {
+        pinnedHTML += `<span class="bus-ticker-pinned-sep"></span>`;
+      }
+      if (firstSX) {
+        pinnedHTML += `<span class="bus-ticker-pinned-dir">→ Greenford</span>` + makePinnedHTML(firstSX);
+      }
+      nextEl.innerHTML = pinnedHTML;
+
+      const pinned = new Set([firstSA?.a, firstSX?.a].filter(Boolean));
+      const scrollItems = allMapped
+        .filter(({ a }) => !pinned.has(a))
+        .map(({ a, label, cls }) =>
+          `<span class="bus-ticker-item">
+            <span class="bus-ticker-route">${(a.lineName || a.lineId || '').toUpperCase()}</span>
+            <span class="bus-ticker-dest">${a.destinationName || ''}</span>
+            <span class="bus-ticker-time ${cls}">${label}</span>
+          </span>
+          <span class="bus-ticker-sep">·</span>`
+        ).join('');
 
       const inner = document.getElementById('bus-ticker-inner');
       inner.style.animation = 'none';
-      inner.innerHTML = items + items;
+      inner.innerHTML = scrollItems + scrollItems;
 
       requestAnimationFrame(() => {
         const totalW   = inner.offsetWidth / 2;
